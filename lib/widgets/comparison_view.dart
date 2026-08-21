@@ -351,72 +351,82 @@ class _ComparisonPaneState extends State<ComparisonPane> {
         Expanded(
           child: Container(
             color: AppColors.crust,
-            child: RawScrollbar(
-              controller: _horizontalController,
-              thumbVisibility: true,
-              trackVisibility: true,
-              thumbColor: AppColors.surface1,
-              trackColor: AppColors.mantle,
-              thickness: 10,
-              radius: const Radius.circular(5),
-              notificationPredicate: (n) => n.depth == 0,
-              child: SingleChildScrollView(
-                controller: _horizontalController,
-                scrollDirection: Axis.horizontal,
-                child: RawScrollbar(
-                  controller: _verticalController,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return RawScrollbar(
+                  controller: _horizontalController,
                   thumbVisibility: true,
                   trackVisibility: true,
                   thumbColor: AppColors.surface1,
                   trackColor: AppColors.mantle,
-                  thickness: 8,
-                  radius: const Radius.circular(4),
+                  thickness: 10,
+                  radius: const Radius.circular(5),
                   notificationPredicate: (n) => n.depth == 0,
                   child: SingleChildScrollView(
-                    controller: _verticalController,
-                    scrollDirection: Axis.vertical,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: SelectionArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: List.generate(lines.length, (index) {
-                          final line = lines[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 32,
-                                  child: Text(
-                                    '${index + 1}',
-                                    textAlign: TextAlign.right,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      color: AppColors.surface1,
-                                      fontSize: 11,
-                                    ),
+                    controller: _horizontalController,
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: RawScrollbar(
+                        controller: _verticalController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        thumbColor: AppColors.surface1,
+                        trackColor: AppColors.mantle,
+                        thickness: 8,
+                        radius: const Radius.circular(4),
+                        notificationPredicate: (n) => n.depth == 0,
+                        child: SingleChildScrollView(
+                          controller: _verticalController,
+                          scrollDirection: Axis.vertical,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          child: SelectionArea(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: List.generate(lines.length, (index) {
+                                final line = lines[index];
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 32,
+                                        child: Text(
+                                          '${index + 1}',
+                                          textAlign: TextAlign.right,
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            color: AppColors.surface1,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        line,
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          color: line.trim().endsWith(':') ? AppColors.yellow : AppColors.text,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  line,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: line.trim().endsWith(':') ? AppColors.yellow : AppColors.text,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                                );
+                              }),
                             ),
-                          );
-                        }),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),

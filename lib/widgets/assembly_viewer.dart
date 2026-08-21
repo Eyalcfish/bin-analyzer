@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/explorer_provider.dart';
+import '../theme/app_colors.dart';
 
 class AssemblyViewer extends StatefulWidget {
   const AssemblyViewer({super.key});
@@ -31,9 +32,9 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFF89B4FA)),
+            CircularProgressIndicator(color: AppColors.blue),
             SizedBox(height: 16),
-            Text('Compiling with GCC...', style: TextStyle(color: Color(0xFFA6ADC8))),
+            Text('Compiling with GCC...', style: TextStyle(color: AppColors.subtext0)),
           ],
         ),
       );
@@ -41,41 +42,41 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
 
     if (result == null) {
       return const Center(
-        child: Text('No compilation result yet. Click Compile.', style: TextStyle(color: Color(0xFF6C7086))),
+        child: Text('No compilation result yet. Click Compile.', style: TextStyle(color: AppColors.overlay0)),
       );
     }
 
     if (!result.success) {
       return Container(
         padding: const EdgeInsets.all(16),
-        color: const Color(0xFF1E1E2E),
+        color: AppColors.base,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.error_outline, color: Color(0xFFF38BA8)),
+                const Icon(Icons.error_outline, color: AppColors.red),
                 const SizedBox(width: 8),
                 const Text(
                   'Compilation Error',
-                  style: TextStyle(color: Color(0xFFF38BA8), fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(color: AppColors.red, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const Spacer(),
-                Text('Exit code: ${result.exitCode}', style: const TextStyle(color: Color(0xFF6C7086), fontSize: 12)),
+                Text('Exit code: ${result.exitCode}', style: const TextStyle(color: AppColors.overlay0, fontSize: 12)),
               ],
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF11111B),
+                color: AppColors.crust,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 'Command: ${result.commandExecuted.split('\n').first}',
                 style: const TextStyle(
                   fontFamily: 'monospace',
-                  color: Color(0xFFF9E2AF),
+                  color: AppColors.yellow,
                   fontSize: 11,
                 ),
               ),
@@ -86,7 +87,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF11111B),
+                  color: AppColors.crust,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: SingleChildScrollView(
@@ -97,7 +98,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                       result.stderr.isNotEmpty ? result.stderr : result.stdout,
                       style: const TextStyle(
                         fontFamily: 'monospace',
-                        color: Color(0xFFF38BA8),
+                        color: AppColors.red,
                         fontSize: 12,
                       ),
                     ),
@@ -120,8 +121,8 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: const BoxDecoration(
-            color: Color(0xFF181825),
-            border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+            color: AppColors.mantle,
+            border: Border(bottom: BorderSide(color: AppColors.surface0)),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -129,28 +130,28 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
               children: [
                 Text(
                   '${lines.length} lines',
-                  style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.w500),
+                  style: const TextStyle(color: AppColors.subtext0, fontSize: 12, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF313244),
+                    color: AppColors.surface0,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${result.durationMs} ms',
-                    style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 11),
+                    style: const TextStyle(color: AppColors.green, fontSize: 11),
                   ),
                 ),
                 const SizedBox(width: 16),
                 // Filter Directives Toggle
                 Row(
                   children: [
-                    const Text('Filter Noise', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
+                    const Text('Filter Noise', style: TextStyle(color: AppColors.subtext0, fontSize: 12)),
                     Switch(
                       value: provider.cleanDirectives,
-                      activeColor: const Color(0xFF89B4FA),
+                      activeColor: AppColors.blue,
                       onChanged: (val) => provider.setCleanDirectives(val),
                     ),
                   ],
@@ -158,7 +159,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                 const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Copy Assembly',
-                  icon: const Icon(Icons.copy, color: Color(0xFFA6ADC8), size: 16),
+                  icon: const Icon(Icons.copy, color: AppColors.subtext0, size: 16),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: asmContent));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -171,47 +172,57 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
           ),
         ),
 
-        // Assembly Lines Area with Dedicated Visible Horizontal & Vertical Scrollbars
+        // Assembly Lines Area (Fills 100% of panel width & height with bidirectional scrolling)
         Expanded(
           child: Container(
-            color: const Color(0xFF11111B),
-            child: RawScrollbar(
-              controller: _horizontalController,
-              thumbVisibility: true,
-              trackVisibility: true,
-              thumbColor: const Color(0xFF45475A),
-              trackColor: const Color(0xFF181825),
-              thickness: 10,
-              radius: const Radius.circular(5),
-              notificationPredicate: (n) => n.depth == 0,
-              child: SingleChildScrollView(
-                controller: _horizontalController,
-                scrollDirection: Axis.horizontal,
-                child: RawScrollbar(
-                  controller: _verticalController,
+            color: AppColors.crust,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return RawScrollbar(
+                  controller: _horizontalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  thumbColor: const Color(0xFF45475A),
-                  trackColor: const Color(0xFF181825),
-                  thickness: 8,
-                  radius: const Radius.circular(4),
+                  thumbColor: AppColors.surface1,
+                  trackColor: AppColors.mantle,
+                  thickness: 10,
+                  radius: const Radius.circular(5),
                   notificationPredicate: (n) => n.depth == 0,
                   child: SingleChildScrollView(
-                    controller: _verticalController,
-                    scrollDirection: Axis.vertical,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: SelectionArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: List.generate(lines.length, (index) {
-                          final line = lines[index];
-                          return _buildAssemblyLine(index + 1, line);
-                        }),
+                    controller: _horizontalController,
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: constraints.maxWidth,
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: RawScrollbar(
+                        controller: _verticalController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        thumbColor: AppColors.surface1,
+                        trackColor: AppColors.mantle,
+                        thickness: 8,
+                        radius: const Radius.circular(4),
+                        notificationPredicate: (n) => n.depth == 0,
+                        child: SingleChildScrollView(
+                          controller: _verticalController,
+                          scrollDirection: Axis.vertical,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          child: SelectionArea(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: List.generate(lines.length, (index) {
+                                final line = lines[index];
+                                return _buildAssemblyLine(index + 1, line);
+                              }),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -222,19 +233,19 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
   Widget _buildAssemblyLine(int lineNum, String line) {
     final trimmed = line.trim();
 
-    Color textColor = const Color(0xFFCDD6F4);
+    Color textColor = AppColors.text;
     FontWeight fontWeight = FontWeight.normal;
 
     if (trimmed.endsWith(':')) {
       // Label
-      textColor = const Color(0xFFF9E2AF);
+      textColor = AppColors.yellow;
       fontWeight = FontWeight.bold;
     } else if (trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith(';')) {
       // Comment
-      textColor = const Color(0xFF585B70);
+      textColor = AppColors.surface2;
     } else if (trimmed.startsWith('.')) {
       // Directive
-      textColor = const Color(0xFF89DCEB);
+      textColor = AppColors.sky;
     } else if (trimmed.startsWith('vadd') ||
         trimmed.startsWith('vmov') ||
         trimmed.startsWith('vfmadd') ||
@@ -246,7 +257,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
         trimmed.startsWith('csel') ||
         trimmed.startsWith('popcnt')) {
       // Key instructions highlighted
-      textColor = const Color(0xFF89B4FA);
+      textColor = AppColors.blue;
     }
 
     return Padding(
@@ -262,7 +273,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
               textAlign: TextAlign.right,
               style: const TextStyle(
                 fontFamily: 'monospace',
-                color: Color(0xFF45475A),
+                color: AppColors.surface1,
                 fontSize: 12,
               ),
             ),
