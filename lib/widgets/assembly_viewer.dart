@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/explorer_provider.dart';
 
@@ -59,7 +58,11 @@ class AssemblyViewer extends StatelessWidget {
               ),
               child: Text(
                 'Command: ${result.commandExecuted.split('\n').first}',
-                style: GoogleFonts.firaCode(color: const Color(0xFFF9E2AF), fontSize: 11),
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: Color(0xFFF9E2AF),
+                  fontSize: 11,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -72,9 +75,17 @@ class AssemblyViewer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: SingleChildScrollView(
-                  child: SelectableText(
-                    result.stderr.isNotEmpty ? result.stderr : result.stdout,
-                    style: GoogleFonts.firaCode(color: const Color(0xFFF38BA8), fontSize: 12),
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SelectableText(
+                      result.stderr.isNotEmpty ? result.stderr : result.stdout,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        color: Color(0xFFF38BA8),
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -97,62 +108,74 @@ class AssemblyViewer extends StatelessWidget {
             color: Color(0xFF181825),
             border: Border(bottom: BorderSide(color: Color(0xFF313244))),
           ),
-          child: Row(
-            children: [
-              Text(
-                '${lines.length} lines',
-                style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF313244),
-                  borderRadius: BorderRadius.circular(4),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Text(
+                  '${lines.length} lines',
+                  style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.w500),
                 ),
-                child: Text(
-                  '${result.durationMs} ms',
-                  style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 11),
-                ),
-              ),
-              const Spacer(),
-              // Filter Directives Toggle
-              Row(
-                children: [
-                  const Text('Filter Noise', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
-                  Switch(
-                    value: provider.cleanDirectives,
-                    activeColor: const Color(0xFF89B4FA),
-                    onChanged: (val) => provider.setCleanDirectives(val),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF313244),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Copy Assembly',
-                icon: const Icon(Icons.copy, color: Color(0xFFA6ADC8), size: 16),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: asmContent));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Assembly copied to clipboard!')),
-                  );
-                },
-              ),
-            ],
+                  child: Text(
+                    '${result.durationMs} ms',
+                    style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 11),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Filter Directives Toggle
+                Row(
+                  children: [
+                    const Text('Filter Noise', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
+                    Switch(
+                      value: provider.cleanDirectives,
+                      activeColor: const Color(0xFF89B4FA),
+                      onChanged: (val) => provider.setCleanDirectives(val),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Copy Assembly',
+                  icon: const Icon(Icons.copy, color: Color(0xFFA6ADC8), size: 16),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: asmContent));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Assembly copied to clipboard!')),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
 
-        // Assembly Lines Area
+        // Assembly Lines Area with Bidirectional Scrolling and Full Hit-Testing
         Expanded(
           child: Container(
             color: const Color(0xFF11111B),
-            child: ListView.builder(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: lines.length,
-              itemBuilder: (context, index) {
-                final line = lines[index];
-                return _buildAssemblyLine(index + 1, line);
-              },
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: SelectionArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(lines.length, (index) {
+                      final line = lines[index];
+                      return _buildAssemblyLine(index + 1, line);
+                    }),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -190,29 +213,32 @@ class AssemblyViewer extends StatelessWidget {
       textColor = const Color(0xFF89B4FA);
     }
 
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 40,
+            width: 44,
             child: Text(
               '$lineNum',
               textAlign: TextAlign.right,
-              style: GoogleFonts.firaCode(color: const Color(0xFF45475A), fontSize: 12),
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: Color(0xFF45475A),
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: SelectableText(
-              line,
-              style: GoogleFonts.firaCode(
-                color: textColor,
-                fontSize: 12.5,
-                fontWeight: fontWeight,
-              ),
+          Text(
+            line,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              color: textColor,
+              fontSize: 12.5,
+              fontWeight: fontWeight,
             ),
           ),
         ],

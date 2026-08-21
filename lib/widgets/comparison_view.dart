@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
@@ -87,72 +86,75 @@ class ComparisonView extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    const Text('Target B: ', style: TextStyle(color: Color(0xFFCDD6F4), fontSize: 12)),
-                                    // Arch Dropdown
-                                    DropdownButton<TargetArch>(
-                                      value: provider.compareArch,
-                                      isDense: true,
-                                      underline: const SizedBox(),
-                                      dropdownColor: const Color(0xFF1E1E2E),
-                                      style: const TextStyle(color: Color(0xFFF38BA8), fontSize: 12, fontWeight: FontWeight.bold),
-                                      items: TargetArch.values.map((a) {
-                                        return DropdownMenuItem(value: a, child: Text(a.name));
-                                      }).toList(),
-                                      onChanged: (val) {
-                                        if (val != null) provider.setCompareArch(val);
-                                      },
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Opt Dropdown
-                                    DropdownButton<OptimizationLevel>(
-                                      value: provider.compareOptLevel,
-                                      isDense: true,
-                                      underline: const SizedBox(),
-                                      dropdownColor: const Color(0xFF1E1E2E),
-                                      style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 12, fontWeight: FontWeight.bold),
-                                      items: OptimizationLevel.values.map((o) {
-                                        return DropdownMenuItem(value: o, child: Text(o.flag));
-                                      }).toList(),
-                                      onChanged: (val) {
-                                        if (val != null) provider.setCompareOptLevel(val);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    TextButton.icon(
-                                      style: TextButton.styleFrom(
-                                        padding: EdgeInsets.zero,
-                                        visualDensity: VisualDensity.compact,
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      const Text('Target B: ', style: TextStyle(color: Color(0xFFCDD6F4), fontSize: 12)),
+                                      // Arch Dropdown
+                                      DropdownButton<TargetArch>(
+                                        value: provider.compareArch,
+                                        isDense: true,
+                                        underline: const SizedBox(),
+                                        dropdownColor: const Color(0xFF1E1E2E),
+                                        style: const TextStyle(color: Color(0xFFF38BA8), fontSize: 12, fontWeight: FontWeight.bold),
+                                        items: TargetArch.values.map((a) {
+                                          return DropdownMenuItem(value: a, child: Text(a.name));
+                                        }).toList(),
+                                        onChanged: (val) {
+                                          if (val != null) provider.setCompareArch(val);
+                                        },
                                       ),
-                                      icon: const Icon(Icons.memory, color: Color(0xFF89B4FA), size: 14),
-                                      label: Text(
-                                        provider.compareFeatureIds.isEmpty
-                                            ? 'Set CPU Flags'
-                                            : '${provider.compareFeatureIds.length} CPU Flags',
-                                        style: const TextStyle(color: Color(0xFF89B4FA), fontSize: 11),
-                                      ),
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (_) => const CpuCapabilitiesDialog(isComparison: true),
-                                        );
-                                      },
-                                    ),
-                                    if (provider.compareActiveCpuFlags.isNotEmpty) ...[
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          provider.compareActiveCpuFlags.join(' '),
-                                          style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 11),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                      const SizedBox(width: 8),
+                                      // Opt Dropdown
+                                      DropdownButton<OptimizationLevel>(
+                                        value: provider.compareOptLevel,
+                                        isDense: true,
+                                        underline: const SizedBox(),
+                                        dropdownColor: const Color(0xFF1E1E2E),
+                                        style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 12, fontWeight: FontWeight.bold),
+                                        items: OptimizationLevel.values.map((o) {
+                                          return DropdownMenuItem(value: o, child: Text(o.flag));
+                                        }).toList(),
+                                        onChanged: (val) {
+                                          if (val != null) provider.setCompareOptLevel(val);
+                                        },
                                       ),
                                     ],
-                                  ],
+                                  ),
+                                ),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      TextButton.icon(
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        icon: const Icon(Icons.memory, color: Color(0xFF89B4FA), size: 14),
+                                        label: Text(
+                                          provider.compareFeatureIds.isEmpty
+                                              ? 'Set CPU Flags'
+                                              : '${provider.compareFeatureIds.length} CPU Flags',
+                                          style: const TextStyle(color: Color(0xFF89B4FA), fontSize: 11),
+                                        ),
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (_) => const CpuCapabilitiesDialog(isComparison: true),
+                                          );
+                                        },
+                                      ),
+                                      if (provider.compareActiveCpuFlags.isNotEmpty) ...[
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          provider.compareActiveCpuFlags.join(' '),
+                                          style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 11),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -273,9 +275,19 @@ class ComparisonView extends StatelessWidget {
     if (!result.success) {
       return Padding(
         padding: const EdgeInsets.all(12),
-        child: SelectableText(
-          result.stderr.toString(),
-          style: GoogleFonts.firaCode(color: const Color(0xFFF38BA8), fontSize: 11),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SelectableText(
+              result.stderr.toString(),
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: Color(0xFFF38BA8),
+                fontSize: 11,
+              ),
+            ),
+          ),
         ),
       );
     }
@@ -307,37 +319,50 @@ class ComparisonView extends StatelessWidget {
         Expanded(
           child: Container(
             color: const Color(0xFF11111B),
-            child: ListView.builder(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
               padding: const EdgeInsets.all(8),
-              itemCount: lines.length,
-              itemBuilder: (context, index) {
-                final line = lines[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 1.5),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 32,
-                        child: Text(
-                          '${index + 1}',
-                          textAlign: TextAlign.right,
-                          style: GoogleFonts.firaCode(color: const Color(0xFF45475A), fontSize: 11),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SelectionArea(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(lines.length, (index) {
+                      final line = lines[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 32,
+                              child: Text(
+                                '${index + 1}',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  color: Color(0xFF45475A),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              line,
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                color: line.trim().endsWith(':') ? const Color(0xFFF9E2AF) : const Color(0xFFCDD6F4),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SelectableText(
-                          line,
-                          style: GoogleFonts.firaCode(
-                            color: line.trim().endsWith(':') ? const Color(0xFFF9E2AF) : const Color(0xFFCDD6F4),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    }),
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ),
