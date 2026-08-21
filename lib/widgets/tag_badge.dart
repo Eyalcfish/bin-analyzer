@@ -22,9 +22,9 @@ class TagBadge extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.8),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
       ),
       child: Text(
         text,

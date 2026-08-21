@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -100,18 +99,17 @@ class ExecutableService {
     }
 
     // 2. Disassemble Instructions
-    String tempFileToClean;
+    Directory? tempDirToClean;
     String actualPath;
 
     if (filePath != null && File(filePath).existsSync()) {
       actualPath = filePath;
-      tempFileToClean = '';
     } else {
       final tempDir = Directory.systemTemp.createTempSync('bin_disasm_');
       final tempFile = File(p.join(tempDir.path, fileName));
       await tempFile.writeAsBytes(bytes);
       actualPath = tempFile.path;
-      tempFileToClean = tempFile.path;
+      tempDirToClean = tempDir;
     }
 
     List<ExecutableInstruction> instructions = [];
@@ -175,10 +173,11 @@ class ExecutableService {
     final resolvedSymbols = allSymbolsMap.values.toList()
       ..sort((a, b) => a.virtualAddress.compareTo(b.virtualAddress));
 
-    if (tempFileToClean.isNotEmpty) {
+    if (tempDirToClean != null) {
       try {
-        final f = File(tempFileToClean);
-        if (f.existsSync()) f.deleteSync();
+        if (tempDirToClean.existsSync()) {
+          tempDirToClean.deleteSync(recursive: true);
+        }
       } catch (_) {}
     }
 

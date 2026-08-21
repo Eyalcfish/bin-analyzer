@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/snippet.dart';
 import '../providers/explorer_provider.dart';
 import '../screens/docs_screen.dart';
 import '../theme/app_colors.dart';

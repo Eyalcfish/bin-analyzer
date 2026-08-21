@@ -153,7 +153,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                     const Text('Filter Noise', style: TextStyle(color: AppColors.subtext0, fontSize: 12)),
                     Switch(
                       value: provider.cleanDirectives,
-                      activeColor: AppColors.blue,
+                      activeThumbColor: AppColors.blue,
                       onChanged: (val) => provider.setCleanDirectives(val),
                     ),
                   ],
@@ -287,7 +287,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
           InstructionInspector.inspectInstruction(context, line, arch: arch);
         }
       },
-      hoverColor: AppColors.blue.withOpacity(0.08),
+      hoverColor: AppColors.blue.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(4),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 2),

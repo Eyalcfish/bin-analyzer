@@ -6,6 +6,7 @@ import '../models/executable_binary.dart';
 import '../providers/executable_provider.dart';
 import '../providers/explorer_provider.dart';
 import '../providers/lab_provider.dart';
+import '../widgets/app_mode_switcher.dart';
 import '../widgets/assembly_viewer.dart';
 import '../widgets/code_editor_panel.dart';
 import '../widgets/comparison_view.dart';
@@ -271,37 +272,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ],
 
             // Mode Switcher (C Source Compiler vs Executable Analyzer vs The Lab)
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF11111B),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF313244)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildModeTabButton('C Source Compiler', Icons.code, true, () {}),
-                  _buildModeTabButton('Executable Analyzer', Icons.biotech, false, () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ExecutableScreen()),
-                    );
-                  }),
-                  _buildModeTabButton('The Lab', Icons.science, false, () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => LabScreen(
-                          onSwitchToCodeExplorer: () => Navigator.of(context).pop(),
-                          onSwitchToExecutableAnalyzer: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExecutableScreen()));
-                          },
-                        ),
+            AppModeSwitcher(
+              currentMode: AppViewMode.cSourceCompiler,
+              onSelectMode: (mode) {
+                if (mode == AppViewMode.executableAnalyzer) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ExecutableScreen()),
+                  );
+                } else if (mode == AppViewMode.theLab) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => LabScreen(
+                        onSwitchToCodeExplorer: () => Navigator.of(context).pop(),
+                        onSwitchToExecutableAnalyzer: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExecutableScreen()));
+                        },
                       ),
-                    );
-                  }),
-                ],
-              ),
+                    ),
+                  );
+                }
+              },
             ),
             const SizedBox(width: 12),
             const SizedBox(
@@ -478,34 +469,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   builder: (_) => const SettingsDialog(),
                 );
               },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModeTabButton(String title, IconData icon, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF313244) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: isSelected ? const Color(0xFFCBA6F7) : const Color(0xFFA6ADC8)),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFFCDD6F4) : const Color(0xFFA6ADC8),
-              ),
             ),
           ],
         ),

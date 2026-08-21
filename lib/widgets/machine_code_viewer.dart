@@ -302,7 +302,7 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
                                   InstructionInspector.inspectInstruction(context, instr.mnemonic, arch: arch);
                                 }
                               },
-                              hoverColor: AppColors.blue.withOpacity(0.08),
+                              hoverColor: AppColors.blue.withValues(alpha: 0.08),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                 child: Row(

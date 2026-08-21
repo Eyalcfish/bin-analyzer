@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:bin_analyzer/models/cpu_capability.dart';
-import 'package:bin_analyzer/models/lab_experiment.dart';
 import 'package:bin_analyzer/providers/executable_provider.dart';
 import 'package:bin_analyzer/providers/explorer_provider.dart';
 import 'package:bin_analyzer/providers/lab_provider.dart';

@@ -105,6 +105,21 @@ class CpuRegisterState {
   bool get df => (rflags & (BigInt.one << 10)) != BigInt.zero; // Direction Flag
   bool get of => (rflags & (BigInt.one << 11)) != BigInt.zero; // Overflow Flag
 
+  String formatGpr(String name, String format) {
+    switch (format) {
+      case 'dec':
+        return formatGprDec(name);
+      case 'signed_dec':
+        return formatGprSignedDec(name);
+      case 'bin':
+        return formatGprBin(name);
+      case 'ascii':
+        return formatGprAscii(name);
+      default:
+        return formatGprHex(name);
+    }
+  }
+
   String formatGprHex(String name) {
     final val = gpr[name.toLowerCase()] ?? BigInt.zero;
     return '0x${val.toRadixString(16).toUpperCase().padLeft(16, '0')}';

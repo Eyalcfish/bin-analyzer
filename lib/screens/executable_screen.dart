@@ -9,6 +9,7 @@ import '../providers/executable_provider.dart';
 import '../providers/lab_provider.dart';
 import '../theme/app_colors.dart';
 import '../utils/instruction_inspector.dart';
+import '../widgets/app_mode_switcher.dart';
 import 'docs_screen.dart';
 import 'lab_screen.dart';
 
@@ -60,7 +61,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: AppColors.red.withOpacity(0.2),
+                color: AppColors.red.withValues(alpha: 0.2),
                 child: Row(
                   children: [
                     const Icon(Icons.error_outline, size: 16, color: AppColors.red),
@@ -135,7 +136,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.mauve.withOpacity(0.2),
+                  color: AppColors.mauve.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.memory, color: AppColors.mauve, size: 18),
@@ -150,56 +151,31 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
           const SizedBox(width: 16),
 
           // Workspace Mode Switcher
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: AppColors.base,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.surface0),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildModeTabButton(
-                  title: 'C Source Compiler',
-                  icon: Icons.code,
-                  isSelected: false,
-                  onTap: () {
-                    if (widget.onSwitchToCodeExplorer != null) {
-                      widget.onSwitchToCodeExplorer!();
-                    } else {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-                _buildModeTabButton(
-                  title: 'Executable Analyzer',
-                  icon: Icons.biotech,
-                  isSelected: true,
-                  onTap: () {},
-                ),
-                _buildModeTabButton(
-                  title: 'The Lab',
-                  icon: Icons.science,
-                  isSelected: false,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => LabScreen(
-                          onSwitchToCodeExplorer: () {
-                            Navigator.of(context).pop();
-                            if (widget.onSwitchToCodeExplorer != null) {
-                              widget.onSwitchToCodeExplorer!();
-                            }
-                          },
-                          onSwitchToExecutableAnalyzer: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+          AppModeSwitcher(
+            currentMode: AppViewMode.executableAnalyzer,
+            onSelectMode: (mode) {
+              if (mode == AppViewMode.cSourceCompiler) {
+                if (widget.onSwitchToCodeExplorer != null) {
+                  widget.onSwitchToCodeExplorer!();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              } else if (mode == AppViewMode.theLab) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => LabScreen(
+                      onSwitchToCodeExplorer: () {
+                        Navigator.of(context).pop();
+                        if (widget.onSwitchToCodeExplorer != null) {
+                          widget.onSwitchToCodeExplorer!();
+                        }
+                      },
+                      onSwitchToExecutableAnalyzer: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
 
           const SizedBox(width: 16),
@@ -348,39 +324,6 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
   );
 }
 
-  Widget _buildModeTabButton({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surface0 : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: isSelected ? AppColors.mauve : AppColors.subtext0),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? AppColors.text : AppColors.subtext0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // --- Binary Overview Header Bar ---
   Widget _buildBinaryHeaderCard(BuildContext context, ExecutableHeader header, String fileName) {
     Color formatColor = AppColors.blue;
@@ -410,9 +353,9 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: formatColor.withOpacity(0.15),
+                  color: formatColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: formatColor.withOpacity(0.4)),
+                  border: Border.all(color: formatColor.withValues(alpha: 0.4)),
                 ),
                 child: Text(
                   header.formatDetail.split(' ').first,
@@ -427,9 +370,9 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.peach.withOpacity(0.15),
+              color: AppColors.peach.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.peach.withOpacity(0.4)),
+              border: Border.all(color: AppColors.peach.withValues(alpha: 0.4)),
             ),
             child: Text(
               header.arch.name,
@@ -609,8 +552,8 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isSel ? AppColors.surface0.withOpacity(0.7) : (index % 2 == 0 ? AppColors.base : AppColors.mantle),
-                    border: Border(bottom: BorderSide(color: AppColors.surface0.withOpacity(0.5))),
+                    color: isSel ? AppColors.surface0.withValues(alpha: 0.7) : (index % 2 == 0 ? AppColors.base : AppColors.mantle),
+                    border: Border(bottom: BorderSide(color: AppColors.surface0.withValues(alpha: 0.5))),
                   ),
                   child: Row(
                     children: [
@@ -665,7 +608,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
-                            color: sec.isExecutable ? AppColors.green.withOpacity(0.15) : AppColors.surface1,
+                            color: sec.isExecutable ? AppColors.green.withValues(alpha: 0.15) : AppColors.surface1,
                             borderRadius: BorderRadius.circular(3),
                           ),
                           child: Text(
@@ -910,9 +853,9 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.green.withOpacity(0.15),
+                        color: AppColors.green.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.green.withOpacity(0.4)),
+                        border: Border.all(color: AppColors.green.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1034,7 +977,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: isHighlighted ? AppColors.mauve.withOpacity(0.35) : AppColors.surface0,
+              color: isHighlighted ? AppColors.mauve.withValues(alpha: 0.35) : AppColors.surface0,
               border: isHighlighted ? const Border(left: BorderSide(color: AppColors.mauve, width: 4)) : null,
             ),
             child: Row(
@@ -1065,8 +1008,8 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
               color: isHighlighted
-                  ? AppColors.mauve.withOpacity(0.25)
-                  : (insn.isPatched ? AppColors.peach.withOpacity(0.15) : (index % 2 == 0 ? AppColors.base : AppColors.mantle)),
+                  ? AppColors.mauve.withValues(alpha: 0.25)
+                  : (insn.isPatched ? AppColors.peach.withValues(alpha: 0.15) : (index % 2 == 0 ? AppColors.base : AppColors.mantle)),
               border: isHighlighted ? const Border(left: BorderSide(color: AppColors.mauve, width: 3)) : null,
             ),
             child: Row(
@@ -1133,12 +1076,12 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
 
   /// Parse a target address from call/jmp operands.
   /// Handles all toolchain output formats, such as:
-  /// - "0xad <main+0x4d>"
-  /// - "ad <main+0x4d>"
-  /// - "0x140001378"
-  /// - "140001378 <check_managed_app>"
-  /// - "<main>" / "<_start>"
-  /// - "*0x140005000"
+  /// - `0xad <main+0x4d>`
+  /// - `ad <main+0x4d>`
+  /// - `0x140001378`
+  /// - `140001378 <check_managed_app>`
+  /// - `<main>` / `<_start>`
+  /// - `*0x140005000`
   int? _parseBranchTarget(String operands, ExecutableBinary? binary) {
     final clean = operands.trim();
     if (clean.isEmpty) return null;
@@ -1203,7 +1146,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
     return null;
   }
 
-  /// Extract the function name from operands like "0x140001378 <check_managed_app>"
+  /// Extract the function name from operands like `0x140001378 <check_managed_app>`
   String? _parseBranchFunctionName(String operands) {
     final match = RegExp(r'<([^>]+)>').firstMatch(operands);
     if (match != null) {
@@ -1470,7 +1413,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                     decoration: BoxDecoration(
                       color: AppColors.mantle,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.peach.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.peach.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [

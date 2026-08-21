@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/cpu_capability.dart';
-import '../models/instruction_doc.dart';
 import '../screens/docs_screen.dart';
 import '../services/database_service.dart';
 import '../theme/app_colors.dart';
@@ -211,7 +210,7 @@ class InstructionInspector {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(8),
                           itemCount: instructions.length,
-                          separatorBuilder: (_, __) => const Divider(color: AppColors.surface0, height: 1),
+                          separatorBuilder: (_, _) => const Divider(color: AppColors.surface0, height: 1),
                           itemBuilder: (context, index) {
                             final doc = instructions[index];
                             return ListTile(
@@ -224,7 +223,7 @@ class InstructionInspector {
                                     decoration: BoxDecoration(
                                       color: AppColors.crust,
                                       borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: AppColors.blue.withOpacity(0.4)),
+                                      border: Border.all(color: AppColors.blue.withValues(alpha: 0.4)),
                                     ),
                                     child: Text(
                                       doc.mnemonic,

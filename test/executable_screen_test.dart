@@ -2,8 +2,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:bin_analyzer/models/cpu_capability.dart';
-import 'package:bin_analyzer/models/executable_binary.dart';
 import 'package:bin_analyzer/providers/executable_provider.dart';
 import 'package:bin_analyzer/screens/executable_screen.dart';
 

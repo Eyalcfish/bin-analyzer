@@ -37,7 +37,7 @@ class ComparisonView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.base,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.blue.withOpacity(0.5)),
+                        border: Border.all(color: AppColors.blue.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
@@ -80,7 +80,7 @@ class ComparisonView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.base,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.red.withOpacity(0.5)),
+                        border: Border.all(color: AppColors.red.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
@@ -272,7 +272,7 @@ class ComparisonView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
@@ -352,7 +352,7 @@ class _ComparisonPaneState extends State<ComparisonPane> {
           InstructionInspector.inspectInstruction(context, line, arch: widget.arch);
         }
       },
-      hoverColor: AppColors.blue.withOpacity(0.08),
+      hoverColor: AppColors.blue.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(4),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 2),

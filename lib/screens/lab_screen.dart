@@ -1,11 +1,9 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/cpu_capability.dart';
 import '../models/lab_experiment.dart';
 import '../providers/lab_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_mode_switcher.dart';
 
 class LabScreen extends StatefulWidget {
   final VoidCallback? onSwitchToCodeExplorer;
@@ -43,11 +41,27 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  void _handleModeSwitch(AppViewMode mode) {
+    if (mode == AppViewMode.cSourceCompiler) {
+      if (widget.onSwitchToCodeExplorer != null) {
+        widget.onSwitchToCodeExplorer!();
+      } else {
+        Navigator.of(context).pop();
+      }
+    } else if (mode == AppViewMode.executableAnalyzer) {
+      if (widget.onSwitchToExecutableAnalyzer != null) {
+        widget.onSwitchToExecutableAnalyzer!();
+      } else {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<LabProvider>();
 
-    // Synchronize controllers if snippets changed externally
+    // Synchronize controllers only when content fundamentally differs from outside edits
     if (_codeController.text != provider.modifiedSnippet.code && !provider.isExecuting && !provider.isBenchmarking) {
       _codeController.text = provider.modifiedSnippet.code;
     }
@@ -71,7 +85,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: AppColors.red.withOpacity(0.2),
+                color: AppColors.red.withValues(alpha: 0.2),
                 child: Row(
                   children: [
                     const Icon(Icons.error_outline, size: 16, color: AppColors.red),
@@ -101,7 +115,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
 
                   // Right Pane: Verification & Benchmark Results
                   Expanded(
-                    flex: provider.isComparisonMode ? 6 : 6,
+                    flex: 6,
                     child: _buildRightInspectionPanel(context, provider),
                   ),
                 ],
@@ -133,7 +147,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppColors.peach.withOpacity(0.2),
+                    color: AppColors.peach.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.science, color: AppColors.peach, size: 18),
@@ -147,49 +161,10 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
             ),
             const SizedBox(width: 16),
 
-            // 3-Way Mode Switcher
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: AppColors.base,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.surface0),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildModeTabButton(
-                    title: 'C Source Compiler',
-                    icon: Icons.code,
-                    isSelected: false,
-                    onTap: () {
-                      if (widget.onSwitchToCodeExplorer != null) {
-                        widget.onSwitchToCodeExplorer!();
-                      } else {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                  _buildModeTabButton(
-                    title: 'Executable Analyzer',
-                    icon: Icons.biotech,
-                    isSelected: false,
-                    onTap: () {
-                      if (widget.onSwitchToExecutableAnalyzer != null) {
-                        widget.onSwitchToExecutableAnalyzer!();
-                      } else {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                  _buildModeTabButton(
-                    title: 'The Lab (Workbench)',
-                    icon: Icons.science,
-                    isSelected: true,
-                    onTap: () {},
-                  ),
-                ],
-              ),
+            // 3-Way Mode Switcher (Unified reusable component)
+            AppModeSwitcher(
+              currentMode: AppViewMode.theLab,
+              onSelectMode: _handleModeSwitch,
             ),
 
             const SizedBox(width: 16),
@@ -296,7 +271,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
               decoration: BoxDecoration(
                 color: AppColors.surface0,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppColors.yellow.withOpacity(0.5)),
+                border: Border.all(color: AppColors.yellow.withValues(alpha: 0.5)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -334,7 +309,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                               provider.setBaselineCode(_baselineCodeController.text);
                             }
                             provider.runBenchmark();
-                            _rightTabController.animateTo(1); // switch to Benchmark tab
+                            _rightTabController.animateTo(1);
                           },
                     child: provider.isBenchmarking
                         ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.base))
@@ -379,7 +354,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                   style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
                 const SizedBox(width: 16),
-                // Snippet Type Toggle (Assembly vs Machine Code)
                 Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
@@ -440,11 +414,11 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
     );
   }
 
-  // Dual Comparison Editor Layout (Side-by-Side Code A vs Code B)
+  // Dual Comparison Editor Layout
   Widget _buildDualComparisonEditorPanel(BuildContext context, LabProvider provider) {
     return Column(
       children: [
-        // Dual Editor Sub-Bar with Controls
+        // Dual Editor Sub-Bar
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           color: AppColors.mantle,
@@ -507,7 +481,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.blue.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: AppColors.blue.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
                             child: const Text('Code A (Baseline)', style: TextStyle(color: AppColors.blue, fontWeight: FontWeight.bold, fontSize: 11)),
                           ),
                           const Spacer(),
@@ -561,7 +535,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: AppColors.peach.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+                            decoration: BoxDecoration(color: AppColors.peach.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
                             child: const Text('Code B (Variant)', style: TextStyle(color: AppColors.peach, fontWeight: FontWeight.bold, fontSize: 11)),
                           ),
                           const Spacer(),
@@ -610,7 +584,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
     );
   }
 
-  // Initial Registers Setup Panel (Shared)
+  // Initial Registers Setup Panel
   Widget _buildInitialRegistersSetup(BuildContext context, LabProvider provider) {
     return Column(
       children: [
@@ -667,7 +641,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                         decoration: BoxDecoration(
                           color: AppColors.surface0,
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.blue.withOpacity(0.4)),
+                          border: Border.all(color: AppColors.blue.withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -701,7 +675,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
   Widget _buildRightInspectionPanel(BuildContext context, LabProvider provider) {
     return Column(
       children: [
-        // Tab Bar
         Container(
           height: 42,
           decoration: const BoxDecoration(
@@ -723,7 +696,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
           ),
         ),
 
-        // Tab View
         Expanded(
           child: TabBarView(
             controller: _rightTabController,
@@ -810,7 +782,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
           ),
         ),
 
-        // RFLAGS Status Flags (Single or Side-by-Side Dual Comparison)
+        // RFLAGS Status Flags
         if (provider.isComparisonMode && baseRes != null && modRes != null) ...[
           Container(
             margin: const EdgeInsets.all(8),
@@ -892,7 +864,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
 
         // GPR Comparison Table / Grid
         if (provider.isComparisonMode && baseRes != null && modRes != null) ...[
-          // Table Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             color: AppColors.mantle,
@@ -915,14 +886,14 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                 final modVal = modRes.registers.gpr[reg] ?? BigInt.zero;
                 final isMatch = baseVal == modVal;
 
-                final baseDisplay = _formatRegisterValue(baseRes.registers, reg, provider.registerDisplayFormat);
-                final modDisplay = _formatRegisterValue(modRes.registers, reg, provider.registerDisplayFormat);
+                final baseDisplay = baseRes.registers.formatGpr(reg, provider.registerDisplayFormat);
+                final modDisplay = modRes.registers.formatGpr(reg, provider.registerDisplayFormat);
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 1.5),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isMatch ? (index % 2 == 0 ? AppColors.base : AppColors.mantle) : AppColors.peach.withOpacity(0.12),
+                    color: isMatch ? (index % 2 == 0 ? AppColors.base : AppColors.mantle) : AppColors.peach.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
                     border: isMatch ? null : const Border(left: BorderSide(color: AppColors.peach, width: 3)),
                   ),
@@ -964,7 +935,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                           decoration: BoxDecoration(
-                            color: isMatch ? AppColors.green.withOpacity(0.2) : AppColors.peach.withOpacity(0.2),
+                            color: isMatch ? AppColors.green.withValues(alpha: 0.2) : AppColors.peach.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(3),
                           ),
                           child: Text(
@@ -995,13 +966,13 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                 final baseVal = baseRes?.registers.gpr[reg];
                 final isChanged = baseVal != null && baseVal != modVal;
 
-                final displayVal = _formatRegisterValue(modRes.registers, reg, provider.registerDisplayFormat);
+                final displayVal = modRes.registers.formatGpr(reg, provider.registerDisplayFormat);
 
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 2),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isChanged ? AppColors.peach.withOpacity(0.12) : (index % 2 == 0 ? AppColors.base : AppColors.mantle),
+                    color: isChanged ? AppColors.peach.withValues(alpha: 0.12) : (index % 2 == 0 ? AppColors.base : AppColors.mantle),
                     borderRadius: BorderRadius.circular(4),
                     border: isChanged ? const Border(left: BorderSide(color: AppColors.peach, width: 3)) : null,
                   ),
@@ -1030,7 +1001,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.peach.withOpacity(0.2),
+                            color: AppColors.peach.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -1048,22 +1019,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
         ],
       ],
     );
-  }
-
-  // Helper to format register value
-  String _formatRegisterValue(CpuRegisterState state, String reg, String format) {
-    switch (format) {
-      case 'dec':
-        return state.formatGprDec(reg);
-      case 'signed_dec':
-        return state.formatGprSignedDec(reg);
-      case 'bin':
-        return state.formatGprBin(reg);
-      case 'ascii':
-        return state.formatGprAscii(reg);
-      default:
-        return state.formatGprHex(reg);
-    }
   }
 
   // 2. Benchmarking & Timing View
@@ -1236,9 +1191,9 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isDiff ? AppColors.peach.withOpacity(0.1) : (isZeroB ? AppColors.base : AppColors.surface0),
+            color: isDiff ? AppColors.peach.withValues(alpha: 0.1) : (isZeroB ? AppColors.base : AppColors.surface0),
             borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: isDiff ? AppColors.peach : (isZeroB ? AppColors.surface0 : AppColors.mauve.withOpacity(0.5))),
+            border: Border.all(color: isDiff ? AppColors.peach : (isZeroB ? AppColors.surface0 : AppColors.mauve.withValues(alpha: 0.5))),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1258,14 +1213,14 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: AppColors.peach.withOpacity(0.2), borderRadius: BorderRadius.circular(3)),
+                      decoration: BoxDecoration(color: AppColors.peach.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(3)),
                       child: const Text('DIFF', style: TextStyle(color: AppColors.peach, fontSize: 9, fontWeight: FontWeight.bold)),
                     ),
                   ],
                   const Spacer(),
                   Text(
                     '256-bit Vector',
-                    style: TextStyle(fontSize: 10, color: AppColors.subtext0.withOpacity(0.6)),
+                    style: TextStyle(fontSize: 10, color: AppColors.subtext0.withValues(alpha: 0.6)),
                   ),
                 ],
               ),
@@ -1301,40 +1256,6 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
   }
 
   // --- Helpers & Widgets ---
-  Widget _buildModeTabButton({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.surface0 : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: isSelected ? AppColors.peach : AppColors.subtext0),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? AppColors.peach : AppColors.subtext0,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildTypeChip({
     required String label,
     required bool isSelected,
@@ -1346,7 +1267,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.peach.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? AppColors.peach.withValues(alpha: 0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
@@ -1382,7 +1303,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: isSet ? AppColors.green.withOpacity(0.2) : AppColors.surface0,
+        color: isSet ? AppColors.green.withValues(alpha: 0.2) : AppColors.surface0,
         borderRadius: BorderRadius.circular(3),
         border: Border.all(color: isSet ? AppColors.green : AppColors.surface1),
       ),
@@ -1417,7 +1338,7 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 22),
@@ -1440,82 +1361,106 @@ class _LabScreenState extends State<LabScreen> with SingleTickerProviderStateMix
     );
   }
 
-  // --- Add Register Dialog ---
   void _showAddRegisterDialog(BuildContext context, LabProvider provider) {
-    String selectedReg = 'rax';
-    final valController = TextEditingController(text: '0x10');
-    final gprs = ['rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15'];
-
     showDialog(
       context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          backgroundColor: AppColors.mantle,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          title: const Row(
-            children: [
-              Icon(Icons.input, size: 18, color: AppColors.blue),
-              SizedBox(width: 8),
-              Text('Inject Initial Register Value', style: TextStyle(fontSize: 14, color: AppColors.text, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Text('Register: ', style: TextStyle(color: AppColors.subtext0, fontSize: 12)),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: selectedReg,
-                    dropdownColor: AppColors.surface0,
-                    underline: const SizedBox(),
-                    items: gprs.map((r) => DropdownMenuItem(value: r, child: Text(r.toUpperCase(), style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.blue)))).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => selectedReg = val);
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: valController,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: AppColors.text),
-                decoration: const InputDecoration(
-                  labelText: 'Value (Hex e.g. 0x2A or Dec e.g. 42)',
-                  labelStyle: TextStyle(color: AppColors.subtext0, fontSize: 11),
-                  filled: true,
-                  fillColor: AppColors.base,
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.subtext0)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.blue, foregroundColor: AppColors.base),
-              onPressed: () {
-                final text = valController.text.trim();
-                BigInt? parsed;
-                if (text.startsWith('0x') || text.startsWith('0X')) {
-                  parsed = BigInt.tryParse(text.substring(2), radix: 16);
-                } else {
-                  parsed = BigInt.tryParse(text);
-                }
-                if (parsed != null) {
-                  provider.setInitialRegister(selectedReg, parsed);
-                  Navigator.of(dialogCtx).pop();
-                }
-              },
-              child: const Text('Set Register'),
-            ),
-          ],
-        ),
+      builder: (dialogCtx) => _AddRegisterDialog(provider: provider),
+    );
+  }
+}
+
+class _AddRegisterDialog extends StatefulWidget {
+  final LabProvider provider;
+  const _AddRegisterDialog({required this.provider});
+
+  @override
+  State<_AddRegisterDialog> createState() => _AddRegisterDialogState();
+}
+
+class _AddRegisterDialogState extends State<_AddRegisterDialog> {
+  String selectedReg = 'rax';
+  late final TextEditingController _valController;
+  static const gprs = ['rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp', 'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15'];
+
+  @override
+  void initState() {
+    super.initState();
+    _valController = TextEditingController(text: '0x10');
+  }
+
+  @override
+  void dispose() {
+    _valController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.mantle,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      title: const Row(
+        children: [
+          Icon(Icons.input, size: 18, color: AppColors.blue),
+          SizedBox(width: 8),
+          Text('Inject Initial Register Value', style: TextStyle(fontSize: 14, color: AppColors.text, fontWeight: FontWeight.bold)),
+        ],
       ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Text('Register: ', style: TextStyle(color: AppColors.subtext0, fontSize: 12)),
+              const SizedBox(width: 8),
+              DropdownButton<String>(
+                value: selectedReg,
+                dropdownColor: AppColors.surface0,
+                underline: const SizedBox(),
+                items: gprs.map((r) => DropdownMenuItem(value: r, child: Text(r.toUpperCase(), style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.blue)))).toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => selectedReg = val);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _valController,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 13, color: AppColors.text),
+            decoration: const InputDecoration(
+              labelText: 'Value (Hex e.g. 0x2A or Dec e.g. 42)',
+              labelStyle: TextStyle(color: AppColors.subtext0, fontSize: 11),
+              filled: true,
+              fillColor: AppColors.base,
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel', style: TextStyle(color: AppColors.subtext0)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.blue, foregroundColor: AppColors.base),
+          onPressed: () {
+            final text = _valController.text.trim();
+            BigInt? parsed;
+            if (text.startsWith('0x') || text.startsWith('0X')) {
+              parsed = BigInt.tryParse(text.substring(2), radix: 16);
+            } else {
+              parsed = BigInt.tryParse(text);
+            }
+            if (parsed != null) {
+              widget.provider.setInitialRegister(selectedReg, parsed);
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Set Register'),
+        ),
+      ],
     );
   }
 }

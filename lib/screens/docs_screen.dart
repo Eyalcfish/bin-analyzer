@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import '../models/cpu_capability.dart';
 import '../models/instruction_doc.dart';
@@ -90,6 +89,8 @@ class _DocsScreenState extends State<DocsScreen> {
 
     final isas = await _dbService.getAvailableIsaExtensions(arch: _selectedArch);
     final cats = await _dbService.getAvailableInstructionCategories(arch: _selectedArch);
+
+    if (!mounted) return;
 
     _isaExtensions = ['All', ...isas];
     _categories = ['All', ...cats];
@@ -187,48 +188,6 @@ class _DocsScreenState extends State<DocsScreen> {
     });
   }
 
-  Future<void> _pickAndImportJsonFile({bool clearExisting = false}) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-        dialogTitle: 'Select Hardware Documentation JSON File',
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        final path = result.files.single.path;
-        if (path != null) {
-          final file = File(path);
-          if (await file.exists()) {
-            final content = await file.readAsString();
-            final count = await _dbService.importInstructionsFromJson(content, clearFirst: clearExisting);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: const Color(0xFF313244),
-                  content: Text(
-                    'Successfully imported $count instructions from ${p.basename(path)}!',
-                    style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
-                  ),
-                ),
-              );
-              _loadFiltersAndData();
-            }
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFFF38BA8),
-            content: Text('File import error: $e'),
-          ),
-        );
-      }
-    }
-  }
-
   void _showImportDialog() {
     final jsonTextController = TextEditingController();
     bool clearExisting = false;
@@ -319,7 +278,7 @@ class _DocsScreenState extends State<DocsScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.crust,
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: AppColors.green.withOpacity(0.4)),
+                            border: Border.all(color: AppColors.green.withValues(alpha: 0.4)),
                           ),
                           child: Row(
                             children: [
@@ -395,10 +354,10 @@ class _DocsScreenState extends State<DocsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: clearExisting ? AppColors.red.withOpacity(0.12) : AppColors.surface0.withOpacity(0.4),
+                    color: clearExisting ? AppColors.red.withValues(alpha: 0.12) : AppColors.surface0.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: clearExisting ? AppColors.red.withOpacity(0.5) : AppColors.surface1,
+                      color: clearExisting ? AppColors.red.withValues(alpha: 0.5) : AppColors.surface1,
                     ),
                   ),
                   child: Row(
@@ -441,9 +400,9 @@ class _DocsScreenState extends State<DocsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.red.withOpacity(0.15),
+                      color: AppColors.red.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.red.withOpacity(0.5)),
+                      border: Border.all(color: AppColors.red.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
@@ -502,29 +461,31 @@ class _DocsScreenState extends State<DocsScreen> {
                           clearFirst: clearExisting,
                         );
 
-                        if (Navigator.of(ctx).canPop()) {
+                        if (ctx.mounted) {
                           Navigator.of(ctx).pop();
                         }
 
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: AppColors.surface0,
-                              content: Text(
-                                clearExisting
-                                    ? 'Database reset: Successfully imported $importedCount instructions!'
-                                    : 'Successfully imported $importedCount instructions into SQLite!',
-                                style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
-                              ),
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.surface0,
+                            content: Text(
+                              clearExisting
+                                  ? 'Database reset: Successfully imported $importedCount instructions!'
+                                  : 'Successfully imported $importedCount instructions into SQLite!',
+                              style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
                             ),
-                          );
-                          _loadFiltersAndData();
-                        }
+                          ),
+                        );
+                        _loadFiltersAndData();
                       } catch (e) {
-                        setModalState(() {
-                          isImporting = false;
-                          importErrorMessage = 'Import error: $e';
-                        });
+                        if (mounted) {
+                          setModalState(() {
+                            isImporting = false;
+                            importErrorMessage = 'Import error: $e';
+                          });
+                        }
                       }
                     },
             ),
@@ -636,8 +597,8 @@ class _DocsScreenState extends State<DocsScreen> {
                 : _instructions.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
+                        cacheExtent: 1000.0,
                         controller: _scrollController,
-                        cacheExtent: 1000,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         itemCount: _instructions.length + (_hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
@@ -953,7 +914,7 @@ class _DocsScreenState extends State<DocsScreen> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF11111B),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF89B4FA).withOpacity(0.3)),
+                    border: Border.all(color: const Color(0xFF89B4FA).withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

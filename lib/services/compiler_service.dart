@@ -325,13 +325,21 @@ class CompilerService {
           }
 
           if (hexPart.isNotEmpty) {
-            final firstSpace = instrPart.indexOf(RegExp(r'\s+'));
-            String mnemonic = instrPart;
+            String cleanInstr = instrPart;
+            for (final commentDelim in ['#', ';', '//']) {
+              final idx = cleanInstr.indexOf(commentDelim);
+              if (idx != -1) {
+                cleanInstr = cleanInstr.substring(0, idx).trim();
+              }
+            }
+
+            final firstSpace = cleanInstr.indexOf(RegExp(r'\s+'));
+            String mnemonic = cleanInstr;
             String operands = '';
 
             if (firstSpace != -1) {
-              mnemonic = instrPart.substring(0, firstSpace).trim();
-              operands = instrPart.substring(firstSpace).trim();
+              mnemonic = cleanInstr.substring(0, firstSpace).trim();
+              operands = cleanInstr.substring(firstSpace).trim();
             }
 
             instructions.add(
@@ -370,6 +378,7 @@ class CompilerService {
     final targetExt = format.extension;
     final outFilePath = customOutputPath ?? p.join(tempDir.path, 'binary_$uuid.$targetExt');
     final outFile = File(outFilePath);
+    bool shouldKeepTempDir = false;
 
     try {
       await srcFile.writeAsString(sourceCode);
@@ -452,6 +461,9 @@ class CompilerService {
       }
 
       final fileSizeBytes = await outFile.length();
+      if (customOutputPath == null) {
+        shouldKeepTempDir = true;
+      }
 
       return BinaryCompilationResult(
         success: true,
@@ -475,6 +487,12 @@ class CompilerService {
         exitCode: -1,
         durationMs: stopwatch.elapsedMilliseconds,
       );
+    } finally {
+      if (!shouldKeepTempDir) {
+        try {
+          tempDir.deleteSync(recursive: true);
+        } catch (_) {}
+      }
     }
   }
 }
