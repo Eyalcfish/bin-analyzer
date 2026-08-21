@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/explorer_provider.dart';
+import '../theme/app_colors.dart';
 
 class CodeEditorPanel extends StatefulWidget {
   const CodeEditorPanel({super.key});
@@ -14,12 +15,14 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
   late TextEditingController _controller;
   late ScrollController _scrollController;
   late ScrollController _lineScrollController;
+  String? _lastLoadedSnippetId;
 
   @override
   void initState() {
     super.initState();
     final provider = context.read<ExplorerProvider>();
     _controller = TextEditingController(text: provider.code);
+    _lastLoadedSnippetId = provider.currentSnippet?.id;
     _scrollController = ScrollController();
     _lineScrollController = ScrollController();
 
@@ -28,15 +31,6 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
         _lineScrollController.jumpTo(_scrollController.offset);
       }
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = context.watch<ExplorerProvider>();
-    if (_controller.text != provider.code) {
-      _controller.text = provider.code;
-    }
   }
 
   @override
@@ -55,8 +49,8 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        title: const Text('Save C Snippet to Database', style: TextStyle(color: Color(0xFFCDD6F4))),
+        backgroundColor: AppColors.base,
+        title: const Text('Save C Snippet to Database', style: TextStyle(color: AppColors.text)),
         content: SizedBox(
           width: 450,
           child: Column(
@@ -64,10 +58,10 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
             children: [
               TextField(
                 controller: titleController,
-                style: const TextStyle(color: Color(0xFFCDD6F4)),
+                style: const TextStyle(color: AppColors.text),
                 decoration: const InputDecoration(
                   labelText: 'Snippet Title',
-                  labelStyle: TextStyle(color: Color(0xFFA6ADC8)),
+                  labelStyle: TextStyle(color: AppColors.subtext0),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -75,20 +69,20 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
               TextField(
                 controller: descController,
                 maxLines: 2,
-                style: const TextStyle(color: Color(0xFFCDD6F4)),
+                style: const TextStyle(color: AppColors.text),
                 decoration: const InputDecoration(
                   labelText: 'Description / Notes',
-                  labelStyle: TextStyle(color: Color(0xFFA6ADC8)),
+                  labelStyle: TextStyle(color: AppColors.subtext0),
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: catController,
-                style: const TextStyle(color: Color(0xFFCDD6F4)),
+                style: const TextStyle(color: AppColors.text),
                 decoration: const InputDecoration(
                   labelText: 'Category (e.g. SIMD, Inlining, Bitwise)',
-                  labelStyle: TextStyle(color: Color(0xFFA6ADC8)),
+                  labelStyle: TextStyle(color: AppColors.subtext0),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -98,10 +92,13 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFA6ADC8))),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.subtext0)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF89B4FA)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.blue,
+              foregroundColor: AppColors.crust,
+            ),
             onPressed: () {
               if (titleController.text.trim().isNotEmpty) {
                 context.read<ExplorerProvider>().saveSnippet(
@@ -115,7 +112,7 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                 );
               }
             },
-            child: const Text('Save', style: TextStyle(color: Color(0xFF11111B), fontWeight: FontWeight.bold)),
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -125,12 +122,21 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ExplorerProvider>();
-    final lines = _controller.text.split('\n');
+
+    // Sync editor text only when an external preset / snippet is selected
+    if (provider.currentSnippet?.id != _lastLoadedSnippetId) {
+      _lastLoadedSnippetId = provider.currentSnippet?.id;
+      if (_controller.text != provider.code) {
+        _controller.text = provider.code;
+      }
+    }
+
+    final lineCount = '\n'.allMatches(_controller.text).length + 1;
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF181825),
-        border: Border(right: BorderSide(color: Color(0xFF313244))),
+        color: AppColors.mantle,
+        border: Border(right: BorderSide(color: AppColors.surface0)),
       ),
       child: Column(
         children: [
@@ -139,19 +145,19 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
             height: 42,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: const BoxDecoration(
-              color: Color(0xFF1E1E2E),
-              border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+              color: AppColors.base,
+              border: Border(bottom: BorderSide(color: AppColors.surface0)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.code, color: Color(0xFF89B4FA), size: 18),
+                const Icon(Icons.code, color: AppColors.blue, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     provider.currentSnippet?.title ?? 'C Source Code',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFFCDD6F4),
+                      color: AppColors.text,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -162,24 +168,24 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF313244),
+                      color: AppColors.surface0,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
                       'PRESET',
-                      style: TextStyle(color: Color(0xFFF9E2AF), fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.yellow, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
                 const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Save to Snippet Database',
-                  icon: const Icon(Icons.bookmark_add_outlined, color: Color(0xFFA6ADC8), size: 18),
+                  icon: const Icon(Icons.bookmark_add_outlined, color: AppColors.subtext0, size: 18),
                   onPressed: () => _showSaveSnippetDialog(context),
                 ),
                 IconButton(
                   tooltip: 'Insert Tab (Hard Tab)',
-                  icon: const Icon(Icons.keyboard_tab, color: Color(0xFFA6ADC8), size: 18),
+                  icon: const Icon(Icons.keyboard_tab, color: AppColors.subtext0, size: 18),
                   onPressed: () {
                     final text = _controller.text;
                     final selection = _controller.selection;
@@ -193,7 +199,7 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                 ),
                 IconButton(
                   tooltip: 'Clear Editor',
-                  icon: const Icon(Icons.clear_all, color: Color(0xFFA6ADC8), size: 18),
+                  icon: const Icon(Icons.clear_all, color: AppColors.subtext0, size: 18),
                   onPressed: () {
                     _controller.clear();
                     provider.setCode('');
@@ -212,10 +218,10 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                 Container(
                   width: 48,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  color: const Color(0xFF11111B),
+                  color: AppColors.crust,
                   child: ListView.builder(
                     controller: _lineScrollController,
-                    itemCount: lines.length,
+                    itemCount: lineCount,
                     itemBuilder: (context, index) {
                       return SizedBox(
                         height: 22,
@@ -223,7 +229,7 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                           '${index + 1}',
                           textAlign: TextAlign.right,
                           style: GoogleFonts.firaCode(
-                            color: const Color(0xFF585B70),
+                            color: AppColors.surface2,
                             fontSize: 13,
                           ),
                         ),
@@ -231,7 +237,7 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                     },
                   ),
                 ),
-                const VerticalDivider(color: Color(0xFF313244), width: 1),
+                const VerticalDivider(color: AppColors.surface0, width: 1),
 
                 // Editor
                 Expanded(
@@ -244,17 +250,17 @@ class _CodeEditorPanelState extends State<CodeEditorPanel> {
                       expands: true,
                       keyboardType: TextInputType.multiline,
                       style: GoogleFonts.firaCode(
-                        color: const Color(0xFFCDD6F4),
+                        color: AppColors.text,
                         fontSize: 13,
                         height: 1.4,
                       ),
-                      cursorColor: const Color(0xFF89B4FA),
+                      cursorColor: AppColors.blue,
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                         hintText: '// Enter C source code here...\nvoid example() {\n\t// your code\n}',
-                        hintStyle: TextStyle(color: Color(0xFF45475A)),
+                        hintStyle: TextStyle(color: AppColors.surface1),
                       ),
                       onChanged: (val) {
                         provider.setCode(val);
