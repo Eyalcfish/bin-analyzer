@@ -148,5 +148,41 @@ void main() {
       expect(neonList.isNotEmpty, isTrue);
       expect(neonList.any((i) => i.mnemonic == 'fadd' || i.mnemonic == 'fmla'), isTrue);
     });
+
+    test('Imports bare JSON array with arch aliases and auto-generated IDs without crashing', () async {
+      const bareJson = '''
+[
+  {
+    "mnemonic": "custom_insn1",
+    "operands": ["r0", "r1"],
+    "arch": "x86_64",
+    "isa": "SSE4.2",
+    "category": "Math",
+    "summary": 12345,
+    "description": null
+  },
+  {
+    "mnemonic": "custom_insn2",
+    "operands": "x0, x1",
+    "arch": "aarch64",
+    "isa_extension": "Base",
+    "category": "Flow",
+    "summary": "ARM instruction"
+  }
+]
+''';
+      final imported = await dbService.importInstructionsFromJson(bareJson, clearFirst: false);
+      expect(imported, equals(2));
+
+      final insn1 = await dbService.lookupInstruction('custom_insn1', arch: TargetArch.amd64);
+      expect(insn1, isNotNull);
+      expect(insn1!.arch, equals(TargetArch.amd64));
+      expect(insn1.operands, equals('r0, r1'));
+      expect(insn1.summary, equals('12345'));
+
+      final insn2 = await dbService.lookupInstruction('custom_insn2', arch: TargetArch.arm64);
+      expect(insn2, isNotNull);
+      expect(insn2!.arch, equals(TargetArch.arm64));
+    });
   });
 }

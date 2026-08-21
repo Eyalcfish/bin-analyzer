@@ -233,79 +233,125 @@ class _DocsScreenState extends State<DocsScreen> {
     final jsonTextController = TextEditingController();
     bool clearExisting = false;
     String? selectedFilePath;
+    String? fileContent;
+    bool isImporting = false;
+    String? importErrorMessage;
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E1E2E),
+          backgroundColor: AppColors.base,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: const Row(
             children: [
-              Icon(Icons.file_upload, color: Color(0xFF89B4FA)),
-              SizedBox(width: 8),
-              Text('Import Database JSON', style: TextStyle(color: Color(0xFFCDD6F4))),
+              Icon(Icons.file_upload, color: AppColors.blue, size: 24),
+              SizedBox(width: 10),
+              Text(
+                'Import Hardware Instructions JSON',
+                style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
             ],
           ),
           content: SizedBox(
-            width: 580,
+            width: 620,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Select a .json file from your computer or paste raw JSON conforming to the Hardware Documentation schema.',
-                  style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 13),
+                  'Attach a .json file from your computer or paste raw JSON directly conforming to instruction schemas.',
+                  style: TextStyle(color: AppColors.subtext0, fontSize: 13),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                // File Picker Button
+                // File Attachment Row
                 Row(
                   children: [
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF313244),
-                        foregroundColor: const Color(0xFF89B4FA),
-                        side: const BorderSide(color: Color(0xFF89B4FA)),
+                        backgroundColor: AppColors.surface0,
+                        foregroundColor: AppColors.blue,
+                        side: const BorderSide(color: AppColors.blue),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       ),
-                      icon: const Icon(Icons.folder_open, size: 16),
-                      label: const Text('Browse .JSON File...', style: TextStyle(fontWeight: FontWeight.bold)),
-                      onPressed: () async {
-                        try {
-                          final result = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['json'],
-                            dialogTitle: 'Select JSON Spec File',
-                          );
-                          if (result != null && result.files.isNotEmpty) {
-                            final path = result.files.single.path;
-                            if (path != null) {
-                              final file = File(path);
-                              final content = await file.readAsString();
-                              setModalState(() {
-                                selectedFilePath = path;
-                                jsonTextController.text = content;
-                              });
-                            }
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(backgroundColor: const Color(0xFFF38BA8), content: Text('Error: $e')),
-                          );
-                        }
-                      },
+                      icon: const Icon(Icons.attach_file, size: 16),
+                      label: const Text('Attach .JSON File...', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: isImporting
+                          ? null
+                          : () async {
+                              try {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: ['json'],
+                                  dialogTitle: 'Select JSON Spec File',
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final path = result.files.single.path;
+                                  if (path != null) {
+                                    final file = File(path);
+                                    final content = await file.readAsString();
+                                    setModalState(() {
+                                      selectedFilePath = path;
+                                      fileContent = content;
+                                      importErrorMessage = null;
+                                      if (content.length > 30000) {
+                                        jsonTextController.text = '(Attached file loaded: ${p.basename(path)} - ${(content.length / 1024).toStringAsFixed(1)} KB)';
+                                      } else {
+                                        jsonTextController.text = content;
+                                      }
+                                    });
+                                  }
+                                }
+                              } catch (e) {
+                                setModalState(() {
+                                  importErrorMessage = 'Error reading file: $e';
+                                });
+                              }
+                            },
                     ),
                     if (selectedFilePath != null) ...[
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          p.basename(selectedFilePath!),
-                          style: const TextStyle(
-                            color: Color(0xFFA6E3A1),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.crust,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.green.withOpacity(0.4)),
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.description, color: AppColors.green, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  p.basename(selectedFilePath!),
+                                  style: const TextStyle(
+                                    color: AppColors.green,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!isImporting)
+                                IconButton(
+                                  icon: const Icon(Icons.close, size: 14, color: AppColors.subtext0),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      selectedFilePath = null;
+                                      fileContent = null;
+                                      jsonTextController.clear();
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -315,83 +361,172 @@ class _DocsScreenState extends State<DocsScreen> {
 
                 const Text(
                   'Or paste raw JSON content below:',
-                  style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                  style: TextStyle(color: AppColors.subtext0, fontSize: 12),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: jsonTextController,
                   maxLines: 7,
+                  enabled: !isImporting,
+                  onChanged: (_) {
+                    if (fileContent != null && selectedFilePath != null) {
+                      setModalState(() {
+                        selectedFilePath = null;
+                        fileContent = null;
+                      });
+                    }
+                  },
                   style: const TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 12,
-                    color: Color(0xFFCDD6F4),
+                    color: AppColors.text,
                   ),
                   decoration: const InputDecoration(
                     hintText: '{\n  "version": "1.0",\n  "instructions": [\n    ...\n  ]\n}',
-                    hintStyle: TextStyle(color: Color(0xFF45475A)),
+                    hintStyle: TextStyle(color: AppColors.surface2),
                     filled: true,
-                    fillColor: Color(0xFF11111B),
+                    fillColor: AppColors.crust,
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: clearExisting,
-                      activeColor: const Color(0xFF89B4FA),
-                      onChanged: (val) {
-                        setModalState(() => clearExisting = val ?? false);
-                      },
+                const SizedBox(height: 12),
+
+                // Overwrite Option
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: clearExisting ? AppColors.red.withOpacity(0.12) : AppColors.surface0.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: clearExisting ? AppColors.red.withOpacity(0.5) : AppColors.surface1,
                     ),
-                    const Text(
-                      'Replace all existing instructions (clear database first)',
-                      style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
-                    ),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: clearExisting,
+                        activeColor: AppColors.red,
+                        checkColor: AppColors.crust,
+                        onChanged: isImporting
+                            ? null
+                            : (val) {
+                                setModalState(() => clearExisting = val ?? false);
+                              },
+                      ),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Overwrite & clear existing database',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Text(
+                              'When unchecked, new instructions are merged/appended and matching IDs are updated.',
+                              style: TextStyle(color: AppColors.subtext0, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+
+                if (importErrorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.red.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.red.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, size: 16, color: AppColors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            importErrorMessage!,
+                            style: const TextStyle(color: AppColors.red, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFFA6ADC8))),
+              onPressed: isImporting ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.subtext0)),
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF89B4FA),
-                foregroundColor: const Color(0xFF11111B),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                backgroundColor: clearExisting ? AppColors.red : AppColors.blue,
+                foregroundColor: AppColors.crust,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               ),
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Import & Index into SQLite', style: TextStyle(fontWeight: FontWeight.bold)),
-              onPressed: () async {
-                final content = jsonTextController.text.trim();
-                if (content.isNotEmpty) {
-                  try {
-                    final importedCount = await _dbService.importInstructionsFromJson(
-                      content,
-                      clearFirst: clearExisting,
-                    );
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF313244),
-                        content: Text(
-                          'Successfully imported $importedCount instructions into SQLite!',
-                          style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    );
-                    _loadFiltersAndData();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(backgroundColor: const Color(0xFFF38BA8), content: Text('Import error: $e')),
-                    );
-                  }
-                }
-              },
+              icon: isImporting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.crust))
+                  : const Icon(Icons.check, size: 16),
+              label: Text(
+                isImporting
+                    ? 'Importing...'
+                    : (clearExisting ? 'Wipe & Import to SQLite' : 'Import & Index into SQLite'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onPressed: isImporting
+                  ? null
+                  : () async {
+                      final content = fileContent ?? jsonTextController.text.trim();
+                      if (content.isEmpty) {
+                        setModalState(() => importErrorMessage = 'Please attach a .json file or paste JSON text first.');
+                        return;
+                      }
+
+                      setModalState(() {
+                        isImporting = true;
+                        importErrorMessage = null;
+                      });
+
+                      try {
+                        final importedCount = await _dbService.importInstructionsFromJson(
+                          content,
+                          clearFirst: clearExisting,
+                        );
+
+                        if (Navigator.of(ctx).canPop()) {
+                          Navigator.of(ctx).pop();
+                        }
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.surface0,
+                              content: Text(
+                                clearExisting
+                                    ? 'Database reset: Successfully imported $importedCount instructions!'
+                                    : 'Successfully imported $importedCount instructions into SQLite!',
+                                style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                          _loadFiltersAndData();
+                        }
+                      } catch (e) {
+                        setModalState(() {
+                          isImporting = false;
+                          importErrorMessage = 'Import error: $e';
+                        });
+                      }
+                    },
             ),
           ],
         ),
@@ -413,19 +548,14 @@ class _DocsScreenState extends State<DocsScreen> {
       );
 
       if (outputFile != null) {
-        String finalPath = outputFile;
-        if (!finalPath.toLowerCase().endsWith('.json')) {
-          finalPath += '.json';
-        }
-        final file = File(finalPath);
+        final file = File(outputFile);
         await file.writeAsString(jsonString);
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: const Color(0xFF313244),
               content: Text(
-                'Successfully exported database to ${p.basename(finalPath)}!',
+                'Database exported successfully to ${p.basename(outputFile)}!',
                 style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
               ),
             ),
@@ -474,21 +604,10 @@ class _DocsScreenState extends State<DocsScreen> {
               backgroundColor: const Color(0xFF313244),
               foregroundColor: const Color(0xFF89B4FA),
               side: const BorderSide(color: Color(0xFF89B4FA)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             ),
-            icon: const Icon(Icons.folder_open, size: 16),
-            label: const Text('Import JSON File', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-            onPressed: () => _pickAndImportJsonFile(),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFCDD6F4),
-              side: const BorderSide(color: Color(0xFF313244)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            icon: const Icon(Icons.paste, size: 16),
-            label: const Text('Paste / Custom Import', style: TextStyle(fontSize: 12)),
+            icon: const Icon(Icons.file_upload, size: 16),
+            label: const Text('Import JSON', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
             onPressed: _showImportDialog,
           ),
           const SizedBox(width: 8),
@@ -499,7 +618,7 @@ class _DocsScreenState extends State<DocsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             icon: const Icon(Icons.file_download, size: 16, color: Color(0xFFA6E3A1)),
-            label: const Text('Export to .JSON File', style: TextStyle(fontSize: 12)),
+            label: const Text('Export JSON', style: TextStyle(fontSize: 12)),
             onPressed: _exportDatabase,
           ),
           const SizedBox(width: 16),

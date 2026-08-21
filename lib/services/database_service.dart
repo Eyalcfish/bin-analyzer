@@ -160,27 +160,78 @@ class DatabaseService {
   }
 
   Future<int> _importInstructionsFromJsonInternal(Database db, String jsonContent, {bool clearFirst = false}) async {
-    final Map<String, dynamic> data = jsonDecode(jsonContent) as Map<String, dynamic>;
-    final List<dynamic> list = data['instructions'] as List<dynamic>? ?? [];
-
-    if (clearFirst) {
-      await db.delete('instruction_docs');
+    String cleanJson = jsonContent.trim();
+    if (cleanJson.startsWith('\uFEFF')) {
+      cleanJson = cleanJson.substring(1).trim();
+    }
+    if (cleanJson.isEmpty) {
+      throw const FormatException('Import JSON is empty');
     }
 
-    final batch = db.batch();
-    int count = 0;
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(cleanJson);
+    } catch (e) {
+      throw FormatException('Invalid JSON format: $e');
+    }
 
-    for (final item in list) {
-      if (item is Map<String, dynamic>) {
-        final doc = InstructionDoc.fromJson(item);
-        final map = doc.toMap();
-        map['created_at'] = DateTime.now().toIso8601String();
-        batch.insert('instruction_docs', map, conflictAlgorithm: ConflictAlgorithm.replace);
-        count++;
+    final List<dynamic> list = [];
+    if (decoded is List) {
+      list.addAll(decoded);
+    } else if (decoded is Map) {
+      if (decoded['instructions'] is List) {
+        list.addAll(decoded['instructions'] as List);
+      } else if (decoded['data'] is List) {
+        list.addAll(decoded['data'] as List);
+      } else if (decoded['items'] is List) {
+        list.addAll(decoded['items'] as List);
+      } else {
+        for (final entry in decoded.entries) {
+          if (entry.value is Map) {
+            final itemMap = Map<String, dynamic>.from(entry.value as Map);
+            if (!itemMap.containsKey('mnemonic') && !itemMap.containsKey('id')) {
+              itemMap['mnemonic'] = entry.key.toString();
+            }
+            list.add(itemMap);
+          }
+        }
       }
     }
 
-    await batch.commit(noResult: true);
+    if (list.isEmpty) {
+      throw const FormatException('No instruction items found in JSON file');
+    }
+
+    int count = 0;
+    final nowIso = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      if (clearFirst) {
+        await txn.delete('instruction_docs');
+      }
+
+      const chunkSize = 400;
+      for (int i = 0; i < list.length; i += chunkSize) {
+        final end = (i + chunkSize < list.length) ? i + chunkSize : list.length;
+        final chunk = list.sublist(i, end);
+        final batch = txn.batch();
+
+        for (int j = 0; j < chunk.length; j++) {
+          final item = chunk[j];
+          if (item is Map) {
+            final mapItem = Map<String, dynamic>.from(item);
+            final doc = InstructionDoc.fromJson(mapItem, i + j);
+            final map = doc.toMap();
+            map['created_at'] = nowIso;
+            batch.insert('instruction_docs', map, conflictAlgorithm: ConflictAlgorithm.replace);
+            count++;
+          }
+        }
+
+        await batch.commit(noResult: true);
+      }
+    });
+
     return count;
   }
 
