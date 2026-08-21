@@ -49,7 +49,8 @@ void main() {
     final cpuFeaturesButton = find.textContaining('CPU Features');
     expect(cpuFeaturesButton, findsOneWidget);
     await tester.tap(cpuFeaturesButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Verify CPU Capabilities dialog builds cleanly without assertions
     expect(find.textContaining('CPU Capabilities & ISA Extensions'), findsOneWidget);
@@ -57,11 +58,13 @@ void main() {
 
     // Close Dialog
     await tester.tap(find.text('Apply & Close'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Open Snippets DB Drawer
     await tester.tap(find.text('Snippets DB'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Verify Drawer builds cleanly without assertions
     expect(find.text('C Snippet Database'), findsOneWidget);

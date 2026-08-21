@@ -14,6 +14,8 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._internal();
   Database? _database;
 
+  factory DatabaseService() => instance;
+
   DatabaseService._internal();
 
   Future<Database> get database async {
@@ -127,6 +129,14 @@ class DatabaseService {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_isa ON instruction_docs(arch, isa_extension);');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_mnemonic ON instruction_docs(arch, mnemonic);');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_cat ON instruction_docs(arch, category);');
+
+    try {
+      final countRes = await db.rawQuery('SELECT COUNT(*) as cnt FROM instruction_docs');
+      final count = (countRes.first['cnt'] as int?) ?? 0;
+      if (count < 20) {
+        await _seedDefaultInstructions(db);
+      }
+    } catch (_) {}
   }
 
   Future<void> _seedDefaultSnippets(Database db) async {
@@ -264,6 +274,182 @@ class DatabaseService {
       return (result.first['count'] as int?) ?? 0;
     }
     return 0;
+  }
+
+  Future<InstructionDoc?> lookupInstruction(String rawToken, {TargetArch? arch}) async {
+    final db = await database;
+    String token = rawToken.trim();
+
+    // Clean prefix/directives/symbols
+    if (token.startsWith('.')) token = token.substring(1);
+    if (token.endsWith(':')) token = token.substring(0, token.length - 1);
+    if (token.isEmpty) return null;
+
+    // 1. Direct mnemonic match for current arch (if specified)
+    if (arch != null) {
+      final matches = await db.query(
+        'instruction_docs',
+        where: 'arch = ? AND mnemonic = ? COLLATE NOCASE',
+        whereArgs: [arch.id, token],
+        limit: 1,
+      );
+      if (matches.isNotEmpty) {
+        return InstructionDoc.fromMap(matches.first);
+      }
+    }
+
+    // 2. Direct mnemonic match across any arch
+    final anyArchMatches = await db.query(
+      'instruction_docs',
+      where: 'mnemonic = ? COLLATE NOCASE',
+      whereArgs: [token],
+      limit: 1,
+    );
+    if (anyArchMatches.isNotEmpty) {
+      return InstructionDoc.fromMap(anyArchMatches.first);
+    }
+
+    // 3. Try stripping AT&T size suffixes (q, l, w, b, d, s) if token length >= 3
+    if (token.length >= 3) {
+      final lastChar = token[token.length - 1].toLowerCase();
+      if (lastChar == 'q' || lastChar == 'l' || lastChar == 'w' || lastChar == 'b' || lastChar == 'd' || lastChar == 's') {
+        final stripped = token.substring(0, token.length - 1);
+        if (arch != null) {
+          final strippedArchMatches = await db.query(
+            'instruction_docs',
+            where: 'arch = ? AND mnemonic = ? COLLATE NOCASE',
+            whereArgs: [arch.id, stripped],
+            limit: 1,
+          );
+          if (strippedArchMatches.isNotEmpty) {
+            return InstructionDoc.fromMap(strippedArchMatches.first);
+          }
+        }
+
+        final strippedMatches = await db.query(
+          'instruction_docs',
+          where: 'mnemonic = ? COLLATE NOCASE',
+          whereArgs: [stripped],
+          limit: 1,
+        );
+        if (strippedMatches.isNotEmpty) {
+          return InstructionDoc.fromMap(strippedMatches.first);
+        }
+      }
+    }
+
+    // 4. Try opcode matching if token looks like hex
+    final hexMatches = await db.query(
+      'instruction_docs',
+      where: 'opcode_encoding LIKE ?',
+      whereArgs: ['%$token%'],
+      limit: 1,
+    );
+    if (hexMatches.isNotEmpty) {
+      return InstructionDoc.fromMap(hexMatches.first);
+    }
+
+    return null;
+  }
+
+  Future<List<InstructionDoc>> getInstructionsByIsa(
+    String isaQuery, {
+    TargetArch? arch,
+    String? featureId,
+    String? flag,
+  }) async {
+    final db = await database;
+
+    final Set<String> tokens = {};
+    if (featureId != null && featureId.isNotEmpty) {
+      tokens.add(featureId.trim());
+      if (featureId.startsWith('avx512')) {
+        tokens.add('AVX-512');
+        tokens.add('AVX512');
+        tokens.add('AVX512F');
+      }
+      if (featureId == 'avx2') tokens.add('AVX2');
+      if (featureId == 'avx') tokens.add('AVX');
+      if (featureId == 'fma') {
+        tokens.add('FMA');
+        tokens.add('FMA3');
+      }
+      if (featureId == 'bmi2' || featureId == 'bmi1') {
+        tokens.add('BMI2');
+        tokens.add('BMI');
+      }
+      if (featureId == 'popcnt') tokens.add('POPCNT');
+      if (featureId == 'neon') {
+        tokens.add('NEON');
+        tokens.add('ARMv8-A NEON');
+      }
+      if (featureId == 'sve' || featureId == 'sve2') {
+        tokens.add('SVE');
+        tokens.add('ARM SVE');
+      }
+      if (featureId == 'dotprod') {
+        tokens.add('DotProd');
+        tokens.add('ARMv8.2-A DotProd');
+      }
+      if (featureId == 'lse') {
+        tokens.add('LSE');
+        tokens.add('ARMv8.1-A LSE');
+      }
+      if (featureId == 'rvv') {
+        tokens.add('RV64GCV');
+        tokens.add('Vector');
+      }
+      if (featureId == 'zbb') {
+        tokens.add('RV64GCB');
+        tokens.add('Zbb');
+      }
+    }
+
+    // Extract core words from query string (e.g., "AVX-512", "AVX2", "NEON", etc.)
+    final wordMatches = RegExp(r'[A-Za-z0-9\-_]+').allMatches(isaQuery);
+    for (final m in wordMatches) {
+      final w = m.group(0)!;
+      final lower = w.toLowerCase();
+      if (w.length >= 3 && lower != 'simd' && lower != 'extension' && lower != 'extensions' && lower != 'advanced') {
+        tokens.add(w);
+        if (w.contains('-')) {
+          tokens.add(w.replaceAll('-', ''));
+        }
+      }
+    }
+
+    if (tokens.isEmpty) {
+      tokens.add(isaQuery.trim());
+    }
+
+    final whereClauses = <String>[];
+    final whereArgs = <dynamic>[];
+
+    final tokenClauses = <String>[];
+    for (final t in tokens) {
+      if (t.isNotEmpty) {
+        tokenClauses.add('(isa_extension LIKE ? OR category LIKE ?)');
+        whereArgs.addAll(['%$t%', '%$t%']);
+      }
+    }
+
+    if (tokenClauses.isNotEmpty) {
+      whereClauses.add('(${tokenClauses.join(' OR ')})');
+    }
+
+    if (arch != null) {
+      whereClauses.add('arch = ?');
+      whereArgs.add(arch.id);
+    }
+
+    final maps = await db.query(
+      'instruction_docs',
+      where: whereClauses.isEmpty ? null : whereClauses.join(' AND '),
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
+      orderBy: 'mnemonic ASC',
+    );
+
+    return maps.map((m) => InstructionDoc.fromMap(m)).toList();
   }
 
   Future<List<String>> getAvailableIsaExtensions({TargetArch? arch}) async {
