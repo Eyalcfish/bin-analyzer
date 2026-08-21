@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/executable_provider.dart';
 import 'providers/explorer_provider.dart';
+import 'providers/lab_provider.dart';
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -19,6 +20,7 @@ class BinAnalyzerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ExplorerProvider()),
         ChangeNotifierProvider(create: (_) => ExecutableProvider()),
+        ChangeNotifierProvider(create: (_) => LabProvider()),
       ],
       child: MaterialApp(
         title: 'BinAnalyzer - C Assembly & Machine Code Explorer',

@@ -281,14 +281,17 @@ int main() {
   }
 
   /// Navigate to a target address (from a call/jmp click).
-  /// Pushes the current highlight onto the navigation stack so the user can go back.
-  void navigateToAddress(int targetAddress) {
-    // Push the current highlight (or 0) so we can return
-    if (_highlightAddress != null) {
+  /// Pushes the source instruction address onto the navigation stack so the user can go back.
+  void navigateToAddress(int targetAddress, {int? sourceAddress}) {
+    if (sourceAddress != null) {
+      _navigationHistory.add(sourceAddress);
+    } else if (_highlightAddress != null) {
       _navigationHistory.add(_highlightAddress!);
     }
-    // Clear function filter so the full instruction list is visible for scrolling
+    // Clear filters and search so the target instruction is in the visible instructions list
+    _selectedSection = 'All';
     _selectedFunction = null;
+    _searchQuery = '';
     _highlightAddress = targetAddress;
     notifyListeners();
   }

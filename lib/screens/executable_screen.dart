@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,9 +6,11 @@ import 'package:provider/provider.dart';
 import '../models/cpu_capability.dart';
 import '../models/executable_binary.dart';
 import '../providers/executable_provider.dart';
+import '../providers/lab_provider.dart';
 import '../theme/app_colors.dart';
 import '../utils/instruction_inspector.dart';
 import 'docs_screen.dart';
+import 'lab_screen.dart';
 
 class ExecutableScreen extends StatefulWidget {
   final VoidCallback? onSwitchToCodeExplorer;
@@ -175,11 +178,67 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                   isSelected: true,
                   onTap: () {},
                 ),
+                _buildModeTabButton(
+                  title: 'The Lab',
+                  icon: Icons.science,
+                  isSelected: false,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => LabScreen(
+                          onSwitchToCodeExplorer: () {
+                            Navigator.of(context).pop();
+                            if (widget.onSwitchToCodeExplorer != null) {
+                              widget.onSwitchToCodeExplorer!();
+                            }
+                          },
+                          onSwitchToExecutableAnalyzer: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
 
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
+
+          // Send Snippet to The Lab Button
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.peach,
+              foregroundColor: AppColors.base,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: const Icon(Icons.science, size: 16),
+            label: const Text('Send to Lab', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            onPressed: () {
+              final labProvider = context.read<LabProvider>();
+              final instructions = provider.filteredInstructions;
+              labProvider.loadFromExecutable(
+                functionName: provider.selectedFunction ?? 'Active Block',
+                instructions: instructions,
+                fileName: provider.binary?.fileName ?? 'binary.exe',
+                arch: provider.binary?.header.arch ?? TargetArch.amd64,
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LabScreen(
+                    onSwitchToCodeExplorer: () {
+                      Navigator.of(context).pop();
+                      if (widget.onSwitchToCodeExplorer != null) {
+                        widget.onSwitchToCodeExplorer!();
+                      }
+                    },
+                    onSwitchToExecutableAnalyzer: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 16),
 
           // Open Binary File
           ElevatedButton.icon(
@@ -879,7 +938,39 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                   ),
                 ],
                 const Spacer(),
-                if (provider.selectedFunction != null)
+                if (provider.selectedFunction != null) ...[
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.science, size: 14, color: AppColors.peach),
+                    label: const Text('Test in Lab', style: TextStyle(color: AppColors.peach, fontSize: 11, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      final labProvider = context.read<LabProvider>();
+                      final funcInstructions = provider.filteredInstructions;
+                      labProvider.loadFromExecutable(
+                        functionName: provider.selectedFunction ?? 'Active Function',
+                        instructions: funcInstructions,
+                        fileName: provider.binary?.fileName ?? 'binary.exe',
+                        arch: provider.binary?.header.arch ?? TargetArch.amd64,
+                      );
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => LabScreen(
+                            onSwitchToCodeExplorer: () {
+                              Navigator.of(context).pop();
+                              if (widget.onSwitchToCodeExplorer != null) {
+                                widget.onSwitchToCodeExplorer!();
+                              }
+                            },
+                            onSwitchToExecutableAnalyzer: () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -892,6 +983,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                       provider.setHighlightAddress(null);
                     },
                   ),
+                ],
               ],
             ),
           ),
@@ -935,11 +1027,16 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                   itemBuilder: (context, index) {
         final insn = instructions[index];
 
+        final isHighlighted = provider.highlightAddress == insn.virtualAddress;
+
         if (insn.isFunctionHeader) {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             margin: const EdgeInsets.only(top: 8),
-            color: AppColors.surface0,
+            decoration: BoxDecoration(
+              color: isHighlighted ? AppColors.mauve.withOpacity(0.35) : AppColors.surface0,
+              border: isHighlighted ? const Border(left: BorderSide(color: AppColors.mauve, width: 4)) : null,
+            ),
             child: Row(
               children: [
                 const Icon(Icons.label, size: 14, color: AppColors.mauve),
@@ -957,8 +1054,6 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
             ),
           );
         }
-
-        final isHighlighted = provider.highlightAddress == insn.virtualAddress;
 
         return InkWell(
           onTap: () {
@@ -1013,30 +1108,98 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
   // --- Branch Target Navigation Helpers ---
 
   static final _branchMnemonics = <String>{
-    'call', 'jmp', 'je', 'jne', 'jz', 'jnz', 'jg', 'jge', 'jl', 'jle',
-    'ja', 'jae', 'jb', 'jbe', 'jo', 'jno', 'js', 'jns', 'jp', 'jnp',
-    'jcxz', 'jecxz', 'jrcxz', 'loop', 'loope', 'loopne',
-    'bl', 'b', 'bx', 'blx', 'beq', 'bne', 'bgt', 'blt', 'bge', 'ble', // ARM
-    'cbz', 'cbnz', 'tbz', 'tbnz', // ARM64
+    // x86 / x64
+    'call', 'callq', 'jmp', 'jmpq', 'ljmp', 'lcall',
+    'je', 'jne', 'jz', 'jnz', 'jg', 'jge', 'jl', 'jle',
+    'ja', 'jae', 'jb', 'jbe', 'jo', 'jno', 'js', 'jns', 'jp', 'jnp', 'jpe', 'jpo',
+    'jcxz', 'jecxz', 'jrcxz', 'loop', 'loope', 'loopne', 'loopz', 'loopnz',
+    // ARM / ARM64
+    'bl', 'b', 'bx', 'blx', 'bxj',
+    'beq', 'bne', 'bcs', 'bhs', 'bcc', 'blo', 'bmi', 'bpl', 'bvs', 'bvc',
+    'bhi', 'bls', 'bge', 'blt', 'bgt', 'ble', 'bal',
+    'cbz', 'cbnz', 'tbz', 'tbnz',
+    // RISC-V
+    'jal', 'jalr', 'j', 'jr',
+    'beqz', 'bnez', 'blez', 'bgez', 'bltz', 'bgtz', 'bltu', 'bgeu',
   };
 
   bool _isBranchMnemonic(String mnemonic) {
-    return _branchMnemonics.contains(mnemonic.toLowerCase());
+    final m = mnemonic.toLowerCase().trim();
+    if (_branchMnemonics.contains(m)) return true;
+    if (m.startsWith('j') || m.startsWith('call') || m.startsWith('loop')) return true;
+    if (m.startsWith('b.') || (m.startsWith('b') && m.length <= 5)) return true;
+    return false;
   }
 
-  /// Parse a hex address from call/jmp operands.
-  /// Handles formats like: "0x140001378", "0x140001378 <func_name>", "140001378 <func_name+0x2c>"
-  int? _parseBranchTarget(String operands) {
-    // Match hex address at the start of operands: "0x1400013a0 <func_name>"
-    final match = RegExp(r'^(0x)?([0-9a-fA-F]+)').firstMatch(operands.trim());
-    if (match != null) {
-      final hexStr = match.group(2)!;
-      final addr = int.tryParse(hexStr, radix: 16);
-      // Only consider it a valid address if it's reasonably large (not a small register-relative offset)
-      if (addr != null && addr > 0xFF) {
-        return addr;
+  /// Parse a target address from call/jmp operands.
+  /// Handles all toolchain output formats, such as:
+  /// - "0xad <main+0x4d>"
+  /// - "ad <main+0x4d>"
+  /// - "0x140001378"
+  /// - "140001378 <check_managed_app>"
+  /// - "<main>" / "<_start>"
+  /// - "*0x140005000"
+  int? _parseBranchTarget(String operands, ExecutableBinary? binary) {
+    final clean = operands.trim();
+    if (clean.isEmpty) return null;
+
+    // 1. Direct hex at start, e.g. "0xad <main+0x4d>", "0x1400013a0", "ad <main+0x4d>", "*0x140005000"
+    final stripped = clean.startsWith('*') ? clean.substring(1).trim() : clean;
+    final hexMatch = RegExp(r'^(?:0x)?([0-9a-fA-F]+)').firstMatch(stripped);
+    if (hexMatch != null) {
+      final hexStr = hexMatch.group(1)!;
+      // Skip if it's a register name (e.g. eax, ebx, edx, ecx, esp, ebp, esi, edi, r8-r15, etc.)
+      const registers = {
+        'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp', 'rip',
+        'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+        'eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp', 'eip',
+        'r8d', 'r9d', 'r10d', 'r11d', 'r12d', 'r13d', 'r14d', 'r15d',
+        'ax', 'bx', 'cx', 'dx', 'si', 'di', 'bp', 'sp', 'ip',
+        'al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh',
+        'w0', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w10', 'w11', 'w12', 'w13', 'w14', 'w15',
+        'x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9', 'x10', 'x11', 'x12', 'x13', 'x14', 'x15',
+        'lr', 'pc', 'fp',
+      };
+      if (!registers.contains(hexStr.toLowerCase())) {
+        final addr = int.tryParse(hexStr, radix: 16);
+        if (addr != null) {
+          return addr;
+        }
       }
     }
+
+    // 2. Extract symbol from <symbol> or <symbol+0xoffset>
+    final symbolMatch = RegExp(r'<([^>]+)>').firstMatch(clean);
+    if (symbolMatch != null && binary != null) {
+      final fullSym = symbolMatch.group(1)!;
+      String symName = fullSym;
+      int offset = 0;
+      if (fullSym.contains('+')) {
+        final parts = fullSym.split('+');
+        symName = parts[0].trim();
+        final offStr = parts[1].trim().replaceFirst('0x', '');
+        offset = int.tryParse(offStr, radix: 16) ?? int.tryParse(offStr) ?? 0;
+      } else if (fullSym.contains('-')) {
+        final parts = fullSym.split('-');
+        symName = parts[0].trim();
+        final offStr = parts[1].trim().replaceFirst('0x', '');
+        offset = -(int.tryParse(offStr, radix: 16) ?? int.tryParse(offStr) ?? 0);
+      }
+
+      // Lookup in binary symbol table
+      final sym = binary.symbols.where((s) => s.name == symName).firstOrNull;
+      if (sym != null) {
+        return sym.virtualAddress + offset;
+      }
+
+      // Lookup in instruction function headers or instruction names
+      final insn = binary.instructions.where((i) => i.functionName == symName && i.isFunctionHeader).firstOrNull ??
+                   binary.instructions.where((i) => i.functionName == symName).firstOrNull;
+      if (insn != null) {
+        return insn.virtualAddress + offset;
+      }
+    }
+
     return null;
   }
 
@@ -1054,7 +1217,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
 
   Widget _buildInstructionSpans(BuildContext context, ExecutableInstruction insn, ExecutableProvider provider) {
     final isBranch = _isBranchMnemonic(insn.mnemonic);
-    final targetAddr = isBranch ? _parseBranchTarget(insn.operands) : null;
+    final targetAddr = isBranch ? _parseBranchTarget(insn.operands, provider.binary) : null;
     final targetFunc = isBranch ? _parseBranchFunctionName(insn.operands) : null;
     final bool isClickable = targetAddr != null;
 
@@ -1080,7 +1243,7 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     onTap: () {
-                      provider.navigateToAddress(targetAddr);
+                      provider.navigateToAddress(targetAddr, sourceAddress: insn.virtualAddress);
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _scrollToHighlight(provider);
                       });
@@ -1096,13 +1259,14 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
                             color: AppColors.green,
                             decoration: TextDecoration.underline,
                             decorationColor: AppColors.green,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Icon(
                           targetFunc != null ? Icons.call_made : Icons.arrow_forward,
-                          size: 10,
-                          color: AppColors.green.withOpacity(0.7),
+                          size: 11,
+                          color: AppColors.green,
                         ),
                       ],
                     ),
@@ -1132,11 +1296,24 @@ class _ExecutableScreenState extends State<ExecutableScreen> with SingleTickerPr
     if (targetAddr == null) return;
 
     final instructions = provider.filteredInstructions;
-    final targetIndex = instructions.indexWhere((insn) => insn.virtualAddress == targetAddr);
+    if (instructions.isEmpty) return;
+
+    // 1. Look for exact address match
+    int targetIndex = instructions.indexWhere((insn) => insn.virtualAddress == targetAddr);
+
+    // 2. If not exact, find the closest preceding instruction or header
+    if (targetIndex < 0) {
+      for (int i = instructions.length - 1; i >= 0; i--) {
+        if (instructions[i].virtualAddress <= targetAddr) {
+          targetIndex = i;
+          break;
+        }
+      }
+    }
 
     if (targetIndex >= 0 && _disasmScrollController.hasClients) {
-      // Estimate item height (~28px per row) and scroll to that position
-      final estimatedOffset = targetIndex * 28.0;
+      // Estimate item height (~28px per row) and scroll with an offset so the target is centered/visible
+      final estimatedOffset = math.max(0.0, (targetIndex * 28.0) - 100.0);
       final maxScroll = _disasmScrollController.position.maxScrollExtent;
       _disasmScrollController.animateTo(
         estimatedOffset.clamp(0.0, maxScroll),

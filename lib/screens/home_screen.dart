@@ -5,6 +5,7 @@ import '../models/cpu_capability.dart';
 import '../models/executable_binary.dart';
 import '../providers/executable_provider.dart';
 import '../providers/explorer_provider.dart';
+import '../providers/lab_provider.dart';
 import '../widgets/assembly_viewer.dart';
 import '../widgets/code_editor_panel.dart';
 import '../widgets/comparison_view.dart';
@@ -14,6 +15,7 @@ import '../widgets/settings_dialog.dart';
 import '../widgets/snippet_database_drawer.dart';
 import 'docs_screen.dart';
 import 'executable_screen.dart';
+import 'lab_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -268,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const SizedBox(width: 10),
             ],
 
-            // Mode Switcher (C Source Compiler vs Executable Analyzer)
+            // Mode Switcher (C Source Compiler vs Executable Analyzer vs The Lab)
             Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
@@ -283,6 +285,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   _buildModeTabButton('Executable Analyzer', Icons.biotech, false, () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const ExecutableScreen()),
+                    );
+                  }),
+                  _buildModeTabButton('The Lab', Icons.science, false, () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => LabScreen(
+                          onSwitchToCodeExplorer: () => Navigator.of(context).pop(),
+                          onSwitchToExecutableAnalyzer: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExecutableScreen()));
+                          },
+                        ),
+                      ),
                     );
                   }),
                 ],
@@ -311,6 +326,44 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   : const Icon(Icons.play_arrow, size: 18),
               label: const Text('Compile ASM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               onPressed: provider.isCompiling ? null : () => provider.compile(),
+            ),
+            const SizedBox(width: 8),
+
+            // Send to The Lab Button
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFAB387),
+                foregroundColor: const Color(0xFF11111B),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              icon: const Icon(Icons.science, size: 16),
+              label: const Text('Send to Lab', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              onPressed: () {
+                final labProvider = context.read<LabProvider>();
+                final asm = provider.result?.filteredAssembly.isNotEmpty == true
+                    ? provider.result!.filteredAssembly
+                    : (provider.result?.rawAssembly.isNotEmpty == true
+                        ? provider.result!.rawAssembly
+                        : 'mov rax, 42');
+                labProvider.loadFromCompiler(
+                  assemblyCode: asm,
+                  arch: provider.arch,
+                  optLevel: provider.optLevel,
+                  cpuFlags: provider.activeCpuFlags,
+                  title: 'Compiled ASM (${provider.optLevel.flag})',
+                );
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => LabScreen(
+                      onSwitchToCodeExplorer: () => Navigator.of(context).pop(),
+                      onSwitchToExecutableAnalyzer: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExecutableScreen()));
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 8),
 
