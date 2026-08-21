@@ -199,11 +199,12 @@ class CpuCapabilitiesDialog extends StatelessWidget {
                                 checkColor: AppColors.crust,
                                 onChanged: (val) {
                                   if (HardwareKeyboard.instance.isShiftPressed) {
-                                    InstructionInspector.showIsaInstructionsDialog(
+                                    InstructionInspector.openHardwareDocsForFeature(
                                       context,
-                                      feat.name,
-                                      arch,
+                                      arch: arch,
                                       featureName: feat.name,
+                                      featureId: feat.id,
+                                      flag: feat.flag,
                                     );
                                     return;
                                   }
@@ -246,16 +247,17 @@ class CpuCapabilitiesDialog extends StatelessWidget {
                                     const SizedBox(width: 6),
                                     IconButton(
                                       icon: const Icon(Icons.menu_book_outlined, size: 16, color: AppColors.blue),
-                                      tooltip: 'View ${feat.name} ISA instructions',
+                                      tooltip: 'Open Hardware Docs for ${feat.name}',
                                       visualDensity: VisualDensity.compact,
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                       onPressed: () {
-                                        InstructionInspector.showIsaInstructionsDialog(
+                                        InstructionInspector.openHardwareDocsForFeature(
                                           context,
-                                          feat.name,
-                                          arch,
+                                          arch: arch,
                                           featureName: feat.name,
+                                          featureId: feat.id,
+                                          flag: feat.flag,
                                         );
                                       },
                                     ),

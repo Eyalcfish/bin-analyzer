@@ -133,7 +133,7 @@ class DatabaseService {
     try {
       final countRes = await db.rawQuery('SELECT COUNT(*) as cnt FROM instruction_docs');
       final count = (countRes.first['cnt'] as int?) ?? 0;
-      if (count == 0) {
+      if (count < 20) {
         await _seedDefaultInstructions(db);
       }
     } catch (_) {}
@@ -352,13 +352,90 @@ class DatabaseService {
     return null;
   }
 
-  Future<List<InstructionDoc>> getInstructionsByIsa(String isaName, {TargetArch? arch}) async {
+  Future<List<InstructionDoc>> getInstructionsByIsa(
+    String isaQuery, {
+    TargetArch? arch,
+    String? featureId,
+    String? flag,
+  }) async {
     final db = await database;
+
+    final Set<String> tokens = {};
+    if (featureId != null && featureId.isNotEmpty) {
+      tokens.add(featureId.trim());
+      if (featureId.startsWith('avx512')) {
+        tokens.add('AVX-512');
+        tokens.add('AVX512');
+        tokens.add('AVX512F');
+      }
+      if (featureId == 'avx2') tokens.add('AVX2');
+      if (featureId == 'avx') tokens.add('AVX');
+      if (featureId == 'fma') {
+        tokens.add('FMA');
+        tokens.add('FMA3');
+      }
+      if (featureId == 'bmi2' || featureId == 'bmi1') {
+        tokens.add('BMI2');
+        tokens.add('BMI');
+      }
+      if (featureId == 'popcnt') tokens.add('POPCNT');
+      if (featureId == 'neon') {
+        tokens.add('NEON');
+        tokens.add('ARMv8-A NEON');
+      }
+      if (featureId == 'sve' || featureId == 'sve2') {
+        tokens.add('SVE');
+        tokens.add('ARM SVE');
+      }
+      if (featureId == 'dotprod') {
+        tokens.add('DotProd');
+        tokens.add('ARMv8.2-A DotProd');
+      }
+      if (featureId == 'lse') {
+        tokens.add('LSE');
+        tokens.add('ARMv8.1-A LSE');
+      }
+      if (featureId == 'rvv') {
+        tokens.add('RV64GCV');
+        tokens.add('Vector');
+      }
+      if (featureId == 'zbb') {
+        tokens.add('RV64GCB');
+        tokens.add('Zbb');
+      }
+    }
+
+    // Extract core words from query string (e.g., "AVX-512", "AVX2", "NEON", etc.)
+    final wordMatches = RegExp(r'[A-Za-z0-9\-_]+').allMatches(isaQuery);
+    for (final m in wordMatches) {
+      final w = m.group(0)!;
+      final lower = w.toLowerCase();
+      if (w.length >= 3 && lower != 'simd' && lower != 'extension' && lower != 'extensions' && lower != 'advanced') {
+        tokens.add(w);
+        if (w.contains('-')) {
+          tokens.add(w.replaceAll('-', ''));
+        }
+      }
+    }
+
+    if (tokens.isEmpty) {
+      tokens.add(isaQuery.trim());
+    }
+
     final whereClauses = <String>[];
     final whereArgs = <dynamic>[];
 
-    whereClauses.add('(isa_extension = ? COLLATE NOCASE OR isa_extension LIKE ?)');
-    whereArgs.addAll([isaName, '%$isaName%']);
+    final tokenClauses = <String>[];
+    for (final t in tokens) {
+      if (t.isNotEmpty) {
+        tokenClauses.add('(isa_extension LIKE ? OR category LIKE ?)');
+        whereArgs.addAll(['%$t%', '%$t%']);
+      }
+    }
+
+    if (tokenClauses.isNotEmpty) {
+      whereClauses.add('(${tokenClauses.join(' OR ')})');
+    }
 
     if (arch != null) {
       whereClauses.add('arch = ?');
@@ -367,8 +444,8 @@ class DatabaseService {
 
     final maps = await db.query(
       'instruction_docs',
-      where: whereClauses.join(' AND '),
-      whereArgs: whereArgs,
+      where: whereClauses.isEmpty ? null : whereClauses.join(' AND '),
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
       orderBy: 'mnemonic ASC',
     );
 

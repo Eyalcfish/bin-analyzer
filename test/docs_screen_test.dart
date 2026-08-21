@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:bin_analyzer/models/cpu_capability.dart';
 import 'package:bin_analyzer/screens/docs_screen.dart';
 import 'package:bin_analyzer/services/database_service.dart';
 
@@ -97,5 +98,27 @@ void main() {
 
     expect(find.text('csel'), findsOneWidget);
     expect(find.text('vaddps'), findsNothing);
+  });
+
+  testWidgets('DocsScreen opens with initialArch and initialIsa filters pre-applied', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DocsScreen(
+          initialArch: TargetArch.amd64,
+          initialIsa: 'AVX512F',
+        ),
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    // Verify AVX512F instructions match and other arch instructions are filtered out
+    expect(find.text('vaddps'), findsOneWidget);
+    expect(find.text('csel'), findsNothing);
   });
 }

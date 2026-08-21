@@ -49,39 +49,22 @@ void main() {
     final cpuFeaturesButton = find.textContaining('CPU Features');
     expect(cpuFeaturesButton, findsOneWidget);
     await tester.tap(cpuFeaturesButton);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Verify CPU Capabilities dialog builds cleanly without assertions
     expect(find.textContaining('CPU Capabilities & ISA Extensions'), findsOneWidget);
     expect(find.text('AVX-512 Foundation (F)'), findsOneWidget);
 
-    // Click ISA instructions docs icon on AVX-512
-    final bookIcon = find.byIcon(Icons.menu_book_outlined);
-    if (bookIcon.evaluate().isNotEmpty) {
-      await tester.tap(bookIcon.first);
-      for (int i = 0; i < 5; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      expect(find.textContaining('Instructions'), findsWidgets);
-      // Close ISA dialog
-      final closeButtons = find.byIcon(Icons.close);
-      if (closeButtons.evaluate().isNotEmpty) {
-        await tester.tap(closeButtons.last);
-        for (int i = 0; i < 5; i++) {
-          await tester.pump(const Duration(milliseconds: 100));
-        }
-      }
-    }
-
     // Close Dialog
     await tester.tap(find.text('Apply & Close'));
-    for (int i = 0; i < 5; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Open Snippets DB Drawer
     await tester.tap(find.text('Snippets DB'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Verify Drawer builds cleanly without assertions
     expect(find.text('C Snippet Database'), findsOneWidget);

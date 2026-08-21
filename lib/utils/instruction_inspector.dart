@@ -74,14 +74,71 @@ class InstructionInspector {
     }
   }
 
+  static void openHardwareDocsForFeature(
+    BuildContext context, {
+    required TargetArch arch,
+    required String featureName,
+    String? featureId,
+    String? flag,
+  }) {
+    String? targetIsa;
+    if (featureId != null) {
+      if (featureId.startsWith('avx512')) {
+        targetIsa = 'AVX512F';
+      } else if (featureId == 'avx2') {
+        targetIsa = 'AVX2';
+      } else if (featureId == 'avx') {
+        targetIsa = 'AVX';
+      } else if (featureId == 'fma') {
+        targetIsa = 'FMA';
+      } else if (featureId == 'bmi2') {
+        targetIsa = 'BMI2';
+      } else if (featureId == 'bmi1') {
+        targetIsa = 'BMI1';
+      } else if (featureId == 'popcnt') {
+        targetIsa = 'POPCNT';
+      } else if (featureId == 'neon') {
+        targetIsa = 'ARMv8-A NEON';
+      } else if (featureId == 'sve' || featureId == 'sve2') {
+        targetIsa = 'ARM SVE';
+      } else if (featureId == 'dotprod') {
+        targetIsa = 'ARMv8.2-A DotProd';
+      } else if (featureId == 'lse') {
+        targetIsa = 'ARMv8.1-A LSE';
+      } else if (featureId == 'rvv') {
+        targetIsa = 'RV64GCV';
+      } else if (featureId == 'zbb') {
+        targetIsa = 'RV64GCB';
+      } else if (featureId == 'sse4_2' || featureId.startsWith('sse')) {
+        targetIsa = 'SSE4.2';
+      }
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DocsScreen(
+          initialArch: arch,
+          initialIsa: targetIsa ?? featureName,
+        ),
+      ),
+    );
+  }
+
   static Future<void> showIsaInstructionsDialog(
     BuildContext context,
     String isaName,
     TargetArch arch, {
     String? featureName,
+    String? featureId,
+    String? flag,
   }) async {
-    final db = DatabaseService();
-    final instructions = await db.getInstructionsByIsa(isaName, arch: arch);
+    final db = DatabaseService.instance;
+    final instructions = await db.getInstructionsByIsa(
+      isaName,
+      arch: arch,
+      featureId: featureId,
+      flag: flag,
+    );
 
     if (!context.mounted) return;
 

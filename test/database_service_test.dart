@@ -123,10 +123,30 @@ void main() {
       expect(fadd, isNotNull);
       expect(fadd!.mnemonic, equals('fadd'));
 
-      // Test ISA instructions lookup
-      final avx512List = await dbService.getInstructionsByIsa('AVX512F', arch: TargetArch.amd64);
+      // Test ISA instructions lookup with feature names and IDs
+      final avx512List = await dbService.getInstructionsByIsa(
+        'AVX-512 Foundation (F)',
+        arch: TargetArch.amd64,
+        featureId: 'avx512f',
+      );
       expect(avx512List.isNotEmpty, isTrue);
       expect(avx512List.any((i) => i.mnemonic == 'vaddps'), isTrue);
+
+      final avx2List = await dbService.getInstructionsByIsa(
+        'AVX2 (Advanced Vector Extensions 2)',
+        arch: TargetArch.amd64,
+        featureId: 'avx2',
+      );
+      expect(avx2List.isNotEmpty, isTrue);
+      expect(avx2List.any((i) => i.mnemonic == 'vpaddd'), isTrue);
+
+      final neonList = await dbService.getInstructionsByIsa(
+        'ARM NEON SIMD',
+        arch: TargetArch.arm64,
+        featureId: 'neon',
+      );
+      expect(neonList.isNotEmpty, isTrue);
+      expect(neonList.any((i) => i.mnemonic == 'fadd' || i.mnemonic == 'fmla'), isTrue);
     });
   });
 }

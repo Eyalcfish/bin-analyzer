@@ -12,7 +12,18 @@ import '../widgets/instruction_detail_dialog.dart';
 import '../widgets/tag_badge.dart';
 
 class DocsScreen extends StatefulWidget {
-  const DocsScreen({super.key});
+  final TargetArch? initialArch;
+  final String? initialIsa;
+  final String? initialCategory;
+  final String? initialQuery;
+
+  const DocsScreen({
+    super.key,
+    this.initialArch,
+    this.initialIsa,
+    this.initialCategory,
+    this.initialQuery,
+  });
 
   @override
   State<DocsScreen> createState() => _DocsScreenState();
@@ -45,6 +56,12 @@ class _DocsScreenState extends State<DocsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedArch = widget.initialArch;
+    _selectedIsa = widget.initialIsa ?? 'All';
+    _selectedCategory = widget.initialCategory ?? 'All';
+    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+      _searchController.text = widget.initialQuery!;
+    }
     _scrollController.addListener(_onScroll);
     _loadFiltersAndData();
   }
@@ -77,8 +94,21 @@ class _DocsScreenState extends State<DocsScreen> {
     _isaExtensions = ['All', ...isas];
     _categories = ['All', ...cats];
 
-    if (!_isaExtensions.contains(_selectedIsa)) {
-      _selectedIsa = 'All';
+    if (_selectedIsa != 'All' && !_isaExtensions.contains(_selectedIsa)) {
+      final matching = _isaExtensions.firstWhere(
+        (i) => i.toLowerCase() == _selectedIsa.toLowerCase() ||
+               i.toLowerCase().contains(_selectedIsa.toLowerCase()) ||
+               _selectedIsa.toLowerCase().contains(i.toLowerCase()),
+        orElse: () => '',
+      );
+      if (matching.isNotEmpty) {
+        _selectedIsa = matching;
+      } else {
+        if (_searchController.text.isEmpty) {
+          _searchController.text = _selectedIsa;
+        }
+        _selectedIsa = 'All';
+      }
     }
     if (!_categories.contains(_selectedCategory)) {
       _selectedCategory = 'All';
