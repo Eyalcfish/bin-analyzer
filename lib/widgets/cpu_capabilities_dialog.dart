@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/instruction_inspector.dart';
 
 class CpuCapabilitiesDialog extends StatelessWidget {
   final bool isComparison;
@@ -126,14 +128,26 @@ class CpuCapabilitiesDialog extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
-            const Text(
-              'INSTRUCTION SET EXTENSIONS',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: AppColors.blue,
-              ),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: const [
+                Text(
+                  'INSTRUCTION SET EXTENSIONS',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: AppColors.blue,
+                  ),
+                ),
+                Text(
+                  'Click 📖 to view ISA instructions',
+                  style: TextStyle(fontSize: 11, color: AppColors.subtext0),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
 
@@ -184,6 +198,16 @@ class CpuCapabilitiesDialog extends StatelessWidget {
                                 activeColor: AppColors.blue,
                                 checkColor: AppColors.crust,
                                 onChanged: (val) {
+                                  if (HardwareKeyboard.instance.isShiftPressed) {
+                                    InstructionInspector.showIsaInstructionsDialog(
+                                      context,
+                                      feat.name,
+                                      arch,
+                                      featureName: feat.name,
+                                    );
+                                    return;
+                                  }
+
                                   if (isComparison) {
                                     provider.toggleCompareCpuFeature(feat.id);
                                   } else {
@@ -218,6 +242,22 @@ class CpuCapabilitiesDialog extends StatelessWidget {
                                           color: AppColors.green,
                                         ),
                                       ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    IconButton(
+                                      icon: const Icon(Icons.menu_book_outlined, size: 16, color: AppColors.blue),
+                                      tooltip: 'View ${feat.name} ISA instructions',
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () {
+                                        InstructionInspector.showIsaInstructionsDialog(
+                                          context,
+                                          feat.name,
+                                          arch,
+                                          featureName: feat.name,
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),

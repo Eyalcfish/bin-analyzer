@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/compilation_result.dart';
 import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/instruction_inspector.dart';
 import 'cpu_capabilities_dialog.dart';
 
 class ComparisonView extends StatelessWidget {
@@ -189,6 +191,25 @@ class ComparisonView extends StatelessWidget {
                       valB: '${resultB.instructionCount}',
                       delta: resultB.instructionCount - resultA.instructionCount,
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.crust,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.surface0),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.info_outline, size: 12, color: AppColors.blue),
+                          SizedBox(width: 4),
+                          Text(
+                            'Shift + Click any instruction to view hardware docs',
+                            style: TextStyle(fontSize: 10, color: AppColors.subtext0),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -204,6 +225,7 @@ class ComparisonView extends StatelessWidget {
               Expanded(
                 child: ComparisonPane(
                   title: 'Target A (${provider.arch.id.toUpperCase()} ${provider.optLevel.flag})',
+                  arch: provider.arch,
                   result: resultA,
                   isLoading: provider.isCompiling,
                   headerColor: AppColors.blue,
@@ -214,6 +236,7 @@ class ComparisonView extends StatelessWidget {
               Expanded(
                 child: ComparisonPane(
                   title: 'Target B (${provider.compareArch.id.toUpperCase()} ${provider.compareOptLevel.flag})',
+                  arch: provider.compareArch,
                   result: resultB,
                   isLoading: provider.isCompareCompiling,
                   headerColor: AppColors.red,
@@ -264,6 +287,7 @@ class ComparisonView extends StatelessWidget {
 
 class ComparisonPane extends StatefulWidget {
   final String title;
+  final TargetArch arch;
   final CompilationResult? result;
   final bool isLoading;
   final Color headerColor;
@@ -271,6 +295,7 @@ class ComparisonPane extends StatefulWidget {
   const ComparisonPane({
     super.key,
     required this.title,
+    required this.arch,
     required this.result,
     required this.isLoading,
     required this.headerColor,
@@ -321,35 +346,44 @@ class _ComparisonPaneState extends State<ComparisonPane> {
       textColor = AppColors.blue;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 36,
-            child: Text(
-              '$lineNum',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                color: AppColors.surface1,
-                fontSize: 11,
+    return InkWell(
+      onTap: () {
+        if (HardwareKeyboard.instance.isShiftPressed) {
+          InstructionInspector.inspectInstruction(context, line, arch: widget.arch);
+        }
+      },
+      hoverColor: AppColors.blue.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 36,
+              child: Text(
+                '$lineNum',
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: AppColors.surface1,
+                  fontSize: 11,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            line,
-            style: TextStyle(
-              fontFamily: 'monospace',
-              color: textColor,
-              fontSize: 12,
-              fontWeight: fontWeight,
+            const SizedBox(width: 10),
+            Text(
+              line,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                color: textColor,
+                fontSize: 12,
+                fontWeight: fontWeight,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

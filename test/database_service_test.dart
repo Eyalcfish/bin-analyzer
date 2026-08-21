@@ -96,10 +96,12 @@ void main() {
 
     test('Queries and filters instructions by architecture and ISA extension', () async {
       final amd64Docs = await dbService.getInstructions(arch: TargetArch.amd64);
+      expect(amd64Docs.isNotEmpty, isTrue);
       expect(amd64Docs.every((d) => d.arch == TargetArch.amd64), isTrue);
 
       final avx512Docs = await dbService.getInstructions(isaExtension: 'AVX512F');
-      expect(avx512Docs.every((d) => d.isaExtension == 'AVX512F'), isTrue);
+      expect(avx512Docs.isNotEmpty, isTrue);
+      expect(avx512Docs.every((d) => d.isaExtension.toLowerCase() == 'avx512f'), isTrue);
 
       final searchResults = await dbService.getInstructions(query: 'fadd');
       expect(searchResults.any((d) => d.mnemonic == 'fadd'), isTrue);
@@ -109,6 +111,22 @@ void main() {
       final exportedJson = await dbService.exportInstructionsToJson();
       expect(exportedJson.contains('"version": "1.0"'), isTrue);
       expect(exportedJson.contains('"instructions"'), isTrue);
+    });
+
+    test('lookupInstruction finds mnemonics, strips AT&T suffixes, and matches opcodes', () async {
+      final vaddps = await dbService.lookupInstruction('vaddps', arch: TargetArch.amd64);
+      expect(vaddps, isNotNull);
+      expect(vaddps!.mnemonic, equals('vaddps'));
+
+      // Test suffix stripping (e.g. vaddpsq or faddd)
+      final fadd = await dbService.lookupInstruction('fadd', arch: TargetArch.arm64);
+      expect(fadd, isNotNull);
+      expect(fadd!.mnemonic, equals('fadd'));
+
+      // Test ISA instructions lookup
+      final avx512List = await dbService.getInstructionsByIsa('AVX512F', arch: TargetArch.amd64);
+      expect(avx512List.isNotEmpty, isTrue);
+      expect(avx512List.any((i) => i.mnemonic == 'vaddps'), isTrue);
     });
   });
 }

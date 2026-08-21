@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/compilation_result.dart';
+import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/instruction_inspector.dart';
 
 class MachineCodeViewer extends StatefulWidget {
   const MachineCodeViewer({super.key});
@@ -127,6 +129,25 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
                     );
                   },
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.crust,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.surface0),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: AppColors.blue),
+                      SizedBox(width: 4),
+                      Text(
+                        'Shift + Click an opcode or mnemonic to view specs',
+                        style: TextStyle(fontSize: 10, color: AppColors.subtext0),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -136,14 +157,16 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
         Expanded(
           child: Container(
             color: AppColors.crust,
-            child: _showRawHexDump ? _buildHexDumpView(result.hexDump) : _buildInstructionsTable(result),
+            child: _showRawHexDump
+                ? _buildHexDumpView(result.hexDump, provider.arch)
+                : _buildInstructionsTable(result, provider.arch),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildHexDumpView(String hexDump) {
+  Widget _buildHexDumpView(String hexDump, TargetArch arch) {
     return RawScrollbar(
       controller: _hexHorizontalController,
       thumbVisibility: true,
@@ -184,7 +207,7 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
     );
   }
 
-  Widget _buildInstructionsTable(CompilationResult result) {
+  Widget _buildInstructionsTable(CompilationResult result, TargetArch arch) {
     final instructions = result.instructions;
 
     return LayoutBuilder(
@@ -271,64 +294,74 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
                               instr.mnemonic.startsWith('fadd') ||
                               instr.mnemonic.startsWith('fmul');
 
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          return Material(
                             color: isEven ? AppColors.crust : const Color(0xFF141420),
-                            child: Row(
-                              children: [
-                                // Offset
-                                SizedBox(
-                                  width: 70,
-                                  child: Text(
-                                    instr.offset,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      color: AppColors.surface2,
-                                      fontSize: 12,
+                            child: InkWell(
+                              onTap: () {
+                                if (HardwareKeyboard.instance.isShiftPressed) {
+                                  InstructionInspector.inspectInstruction(context, instr.mnemonic, arch: arch);
+                                }
+                              },
+                              hoverColor: AppColors.blue.withOpacity(0.08),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                child: Row(
+                                  children: [
+                                    // Offset
+                                    SizedBox(
+                                      width: 70,
+                                      child: Text(
+                                        instr.offset,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          color: AppColors.surface2,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
 
-                                // Hex Machine Bytes
-                                SizedBox(
-                                  width: 220,
-                                  child: Text(
-                                    instr.hexBytes,
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      color: isVectorOp ? AppColors.red : AppColors.green,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                                    // Hex Machine Bytes
+                                    SizedBox(
+                                      width: 220,
+                                      child: Text(
+                                        instr.hexBytes,
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          color: isVectorOp ? AppColors.red : AppColors.green,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
 
-                                // Mnemonic
-                                SizedBox(
-                                  width: 100,
-                                  child: Text(
-                                    instr.mnemonic,
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      color: isVectorOp ? AppColors.mauve : AppColors.blue,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                    // Mnemonic
+                                    SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        instr.mnemonic,
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          color: isVectorOp ? AppColors.mauve : AppColors.blue,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
 
-                                // Operands
-                                Expanded(
-                                  child: Text(
-                                    instr.operands,
-                                    style: const TextStyle(
-                                      fontFamily: 'monospace',
-                                      color: AppColors.text,
-                                      fontSize: 12,
+                                    // Operands
+                                    Expanded(
+                                      child: Text(
+                                        instr.operands,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          color: AppColors.text,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           );
                         },

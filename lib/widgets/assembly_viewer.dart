@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/instruction_inspector.dart';
 
 class AssemblyViewer extends StatefulWidget {
   const AssemblyViewer({super.key});
@@ -167,6 +169,25 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                     );
                   },
                 ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.crust,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: AppColors.surface0),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 12, color: AppColors.blue),
+                      SizedBox(width: 4),
+                      Text(
+                        'Shift + Click any instruction to view hardware docs',
+                        style: TextStyle(fontSize: 10, color: AppColors.subtext0),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -213,7 +234,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: List.generate(lines.length, (index) {
                                 final line = lines[index];
-                                return _buildAssemblyLine(index + 1, line);
+                                return _buildAssemblyLine(index + 1, line, provider.arch);
                               }),
                             ),
                           ),
@@ -230,7 +251,7 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
     );
   }
 
-  Widget _buildAssemblyLine(int lineNum, String line) {
+  Widget _buildAssemblyLine(int lineNum, String line, TargetArch arch) {
     final trimmed = line.trim();
 
     Color textColor = AppColors.text;
@@ -260,35 +281,44 @@ class _AssemblyViewerState extends State<AssemblyViewer> {
       textColor = AppColors.blue;
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 44,
-            child: Text(
-              '$lineNum',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                color: AppColors.surface1,
-                fontSize: 12,
+    return InkWell(
+      onTap: () {
+        if (HardwareKeyboard.instance.isShiftPressed) {
+          InstructionInspector.inspectInstruction(context, line, arch: arch);
+        }
+      },
+      hoverColor: AppColors.blue.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 44,
+              child: Text(
+                '$lineNum',
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: AppColors.surface1,
+                  fontSize: 12,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            line,
-            style: TextStyle(
-              fontFamily: 'monospace',
-              color: textColor,
-              fontSize: 12.5,
-              fontWeight: fontWeight,
+            const SizedBox(width: 12),
+            Text(
+              line,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                color: textColor,
+                fontSize: 12.5,
+                fontWeight: fontWeight,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
