@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/compilation_result.dart';
 import '../providers/explorer_provider.dart';
+import '../theme/app_colors.dart';
 
 class MachineCodeViewer extends StatefulWidget {
   const MachineCodeViewer({super.key});
@@ -12,6 +14,17 @@ class MachineCodeViewer extends StatefulWidget {
 
 class _MachineCodeViewerState extends State<MachineCodeViewer> {
   bool _showRawHexDump = false;
+  final ScrollController _tableHorizontalController = ScrollController();
+  final ScrollController _hexHorizontalController = ScrollController();
+  final ScrollController _hexVerticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _tableHorizontalController.dispose();
+    _hexHorizontalController.dispose();
+    _hexVerticalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +36,9 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFF89B4FA)),
+            CircularProgressIndicator(color: AppColors.blue),
             SizedBox(height: 16),
-            Text('Disassembling Machine Code...', style: TextStyle(color: Color(0xFFA6ADC8))),
+            Text('Disassembling Machine Code...', style: TextStyle(color: AppColors.subtext0)),
           ],
         ),
       );
@@ -33,7 +46,7 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
 
     if (result == null || !result.success) {
       return const Center(
-        child: Text('No machine code generated.', style: TextStyle(color: Color(0xFF6C7086))),
+        child: Text('No machine code generated.', style: TextStyle(color: AppColors.overlay0)),
       );
     }
 
@@ -44,8 +57,8 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
           height: 38,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: const BoxDecoration(
-            color: Color(0xFF181825),
-            border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+            color: AppColors.mantle,
+            border: Border(bottom: BorderSide(color: AppColors.surface0)),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -54,24 +67,24 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF313244),
+                    color: AppColors.surface0,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${result.codeSizeBytes} bytes (.text)',
-                    style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 11, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: AppColors.green, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF313244),
+                    color: AppColors.surface0,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     '${result.instructionCount} instructions',
-                    style: const TextStyle(color: Color(0xFF89B4FA), fontSize: 11, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: AppColors.blue, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -97,16 +110,16 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
                   },
                   style: SegmentedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    backgroundColor: const Color(0xFF181825),
-                    selectedBackgroundColor: const Color(0xFF313244),
-                    foregroundColor: const Color(0xFFA6ADC8),
-                    selectedForegroundColor: const Color(0xFFCDD6F4),
+                    backgroundColor: AppColors.mantle,
+                    selectedBackgroundColor: AppColors.surface0,
+                    foregroundColor: AppColors.subtext0,
+                    selectedForegroundColor: AppColors.text,
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Copy Disassembly',
-                  icon: const Icon(Icons.copy, color: Color(0xFFA6ADC8), size: 16),
+                  icon: const Icon(Icons.copy, color: AppColors.subtext0, size: 16),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: _showRawHexDump ? result.hexDump : result.rawDisassembly));
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -122,7 +135,7 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
         // Body
         Expanded(
           child: Container(
-            color: const Color(0xFF11111B),
+            color: AppColors.crust,
             child: _showRawHexDump ? _buildHexDumpView(result.hexDump) : _buildInstructionsTable(result),
           ),
         ),
@@ -132,25 +145,38 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
 
   Widget _buildHexDumpView(String hexDump) {
     return RawScrollbar(
+      controller: _hexHorizontalController,
       thumbVisibility: true,
       trackVisibility: true,
-      thumbColor: const Color(0xFF45475A),
-      trackColor: const Color(0xFF181825),
+      thumbColor: AppColors.surface1,
+      trackColor: AppColors.mantle,
       thickness: 10,
       radius: const Radius.circular(5),
       notificationPredicate: (n) => n.depth == 0,
       child: SingleChildScrollView(
+        controller: _hexHorizontalController,
         scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          padding: const EdgeInsets.all(12),
-          child: SelectableText(
-            hexDump.isNotEmpty ? hexDump : 'No hex dump available.',
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              color: Color(0xFFA6ADC8),
-              fontSize: 12,
-              height: 1.4,
+        child: RawScrollbar(
+          controller: _hexVerticalController,
+          thumbVisibility: true,
+          trackVisibility: true,
+          thumbColor: AppColors.surface1,
+          trackColor: AppColors.mantle,
+          thickness: 8,
+          radius: const Radius.circular(4),
+          notificationPredicate: (n) => n.depth == 0,
+          child: SingleChildScrollView(
+            controller: _hexVerticalController,
+            scrollDirection: Axis.vertical,
+            padding: const EdgeInsets.all(12),
+            child: SelectableText(
+              hexDump.isNotEmpty ? hexDump : 'No hex dump available.',
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: AppColors.subtext0,
+                fontSize: 12,
+                height: 1.4,
+              ),
             ),
           ),
         ),
@@ -158,22 +184,24 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
     );
   }
 
-  Widget _buildInstructionsTable(dynamic result) {
-    final instructions = result.instructions as List;
+  Widget _buildInstructionsTable(CompilationResult result) {
+    final instructions = result.instructions;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final minTableWidth = constraints.maxWidth > 650 ? constraints.maxWidth : 650.0;
 
         return RawScrollbar(
+          controller: _tableHorizontalController,
           thumbVisibility: true,
           trackVisibility: true,
-          thumbColor: const Color(0xFF45475A),
-          trackColor: const Color(0xFF181825),
+          thumbColor: AppColors.surface1,
+          trackColor: AppColors.mantle,
           thickness: 10,
           radius: const Radius.circular(5),
           notificationPredicate: (n) => n.depth == 0,
           child: SingleChildScrollView(
+            controller: _tableHorizontalController,
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: minTableWidth,
@@ -181,145 +209,145 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
               child: SelectionArea(
                 child: Column(
                   children: [
-                  // Table Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF181825),
-                      border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+                    // Table Header
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.mantle,
+                        border: Border(bottom: BorderSide(color: AppColors.surface0)),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 70,
+                            child: Text('OFFSET', style: _headerStyle),
+                          ),
+                          SizedBox(
+                            width: 220,
+                            child: Text('MACHINE OPCODES (HEX)', style: _headerStyle),
+                          ),
+                          SizedBox(
+                            width: 100,
+                            child: Text('MNEMONIC', style: _headerStyle),
+                          ),
+                          Expanded(
+                            child: Text('OPERANDS / REGISTERS', style: _headerStyle),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 70,
-                          child: Text('OFFSET', style: _headerStyle),
-                        ),
-                        SizedBox(
-                          width: 220,
-                          child: Text('MACHINE OPCODES (HEX)', style: _headerStyle),
-                        ),
-                        SizedBox(
-                          width: 100,
-                          child: Text('MNEMONIC', style: _headerStyle),
-                        ),
-                        Expanded(
-                          child: Text('OPERANDS / REGISTERS', style: _headerStyle),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  // Table Rows
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: instructions.length,
-                      itemBuilder: (context, index) {
-                        final instr = instructions[index];
+                    // Table Rows
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: instructions.length,
+                        itemBuilder: (context, index) {
+                          final instr = instructions[index];
 
-                        if (instr.isHeader) {
+                          if (instr.isHeader) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              color: AppColors.base,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.functions, color: AppColors.yellow, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    instr.mnemonic,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: AppColors.yellow,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          final isEven = index % 2 == 0;
+                          final isVectorOp = instr.mnemonic.startsWith('v') ||
+                              instr.mnemonic.startsWith('fadd') ||
+                              instr.mnemonic.startsWith('fmul');
+
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            color: const Color(0xFF1E1E2E),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            color: isEven ? AppColors.crust : const Color(0xFF141420),
                             child: Row(
                               children: [
-                                const Icon(Icons.functions, color: Color(0xFFF9E2AF), size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  instr.mnemonic,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: Color(0xFFF9E2AF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                // Offset
+                                SizedBox(
+                                  width: 70,
+                                  child: Text(
+                                    instr.offset,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: AppColors.surface2,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+
+                                // Hex Machine Bytes
+                                SizedBox(
+                                  width: 220,
+                                  child: Text(
+                                    instr.hexBytes,
+                                    style: TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: isVectorOp ? AppColors.red : AppColors.green,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+
+                                // Mnemonic
+                                SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    instr.mnemonic,
+                                    style: TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: isVectorOp ? AppColors.mauve : AppColors.blue,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+
+                                // Operands
+                                Expanded(
+                                  child: Text(
+                                    instr.operands,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: AppColors.text,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           );
-                        }
-
-                        final isEven = index % 2 == 0;
-                        final isVectorOp = instr.mnemonic.startsWith('v') ||
-                            instr.mnemonic.startsWith('fadd') ||
-                            instr.mnemonic.startsWith('fmul');
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          color: isEven ? const Color(0xFF11111B) : const Color(0xFF141420),
-                          child: Row(
-                            children: [
-                              // Offset
-                              SizedBox(
-                                width: 70,
-                                child: Text(
-                                  instr.offset,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: Color(0xFF585B70),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-
-                              // Hex Machine Bytes
-                              SizedBox(
-                                width: 220,
-                                child: Text(
-                                  instr.hexBytes,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: isVectorOp ? const Color(0xFFF38BA8) : const Color(0xFFA6E3A1),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-
-                              // Mnemonic
-                              SizedBox(
-                                width: 100,
-                                child: Text(
-                                  instr.mnemonic,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: isVectorOp ? const Color(0xFFCBA6F7) : const Color(0xFF89B4FA),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-
-                              // Operands
-                              Expanded(
-                                child: Text(
-                                  instr.operands,
-                                  style: const TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: Color(0xFFCDD6F4),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   TextStyle get _headerStyle => const TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.1,
-        color: Color(0xFF89B4FA),
+        color: AppColors.blue,
       );
 }

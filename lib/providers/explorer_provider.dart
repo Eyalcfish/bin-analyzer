@@ -196,6 +196,20 @@ class ExplorerProvider extends ChangeNotifier {
     compileComparison();
   }
 
+  void applyCompareCpuPreset(CpuPreset preset) {
+    _compareArch = preset.arch;
+    _compareFeatureIds.clear();
+    _compareFeatureIds.addAll(preset.featureIds);
+    notifyListeners();
+    compileComparison();
+  }
+
+  void clearCompareCpuFeatures() {
+    _compareFeatureIds.clear();
+    notifyListeners();
+    compileComparison();
+  }
+
   void loadSnippet(Snippet snippet) {
     _currentSnippet = snippet;
     _code = snippet.code;

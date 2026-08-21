@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 import '../models/cpu_capability.dart';
 import '../models/instruction_doc.dart';
 import '../services/database_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/instruction_detail_dialog.dart';
+import '../widgets/tag_badge.dart';
 
 class DocsScreen extends StatefulWidget {
   const DocsScreen({super.key});
@@ -872,35 +874,21 @@ class _DocsScreenState extends State<DocsScreen> {
                         spacing: 4,
                         runSpacing: 4,
                         children: [
-                          _buildTag(doc.isaExtension, const Color(0xFFF38BA8)),
-                          _buildTag(doc.category, const Color(0xFFCBA6F7)),
+                          TagBadge(doc.isaExtension, color: AppColors.red),
+                          TagBadge(doc.category, color: AppColors.mauve),
                           if (doc.vectorLength.isNotEmpty)
-                            _buildTag(doc.vectorLength, const Color(0xFFA6E3A1)),
+                            TagBadge(doc.vectorLength, color: AppColors.green),
                         ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Color(0xFF585B70), size: 20),
+                const Icon(Icons.chevron_right, color: AppColors.surface2, size: 20),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/instruction_doc.dart';
+import '../theme/app_colors.dart';
+import 'tag_badge.dart';
 
 class InstructionDetailDialog extends StatelessWidget {
   final InstructionDoc doc;
@@ -17,7 +19,7 @@ class InstructionDetailDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF1E1E2E),
+      backgroundColor: AppColors.base,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         width: 750,
@@ -34,9 +36,9 @@ class InstructionDetailDialog extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF313244),
+                      color: AppColors.surface0,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF89B4FA)),
+                      border: Border.all(color: AppColors.blue),
                     ),
                     child: Text(
                       doc.mnemonic,
@@ -44,7 +46,7 @@ class InstructionDetailDialog extends StatelessWidget {
                         fontFamily: 'monospace',
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF89B4FA),
+                        color: AppColors.blue,
                       ),
                     ),
                   ),
@@ -58,7 +60,7 @@ class InstructionDetailDialog extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFCDD6F4),
+                            color: AppColors.text,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -66,23 +68,23 @@ class InstructionDetailDialog extends StatelessWidget {
                           spacing: 6,
                           runSpacing: 4,
                           children: [
-                            _buildBadge(doc.arch.name, const Color(0xFF89B4FA)),
-                            _buildBadge(doc.isaExtension, const Color(0xFFF38BA8)),
-                            _buildBadge(doc.category, const Color(0xFFCBA6F7)),
+                            TagBadge(doc.arch.name, color: AppColors.blue, fontSize: 11),
+                            TagBadge(doc.isaExtension, color: AppColors.red, fontSize: 11),
+                            TagBadge(doc.category, color: AppColors.mauve, fontSize: 11),
                             if (doc.vectorLength.isNotEmpty)
-                              _buildBadge(doc.vectorLength, const Color(0xFFA6E3A1)),
+                              TagBadge(doc.vectorLength, color: AppColors.green, fontSize: 11),
                           ],
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFA6ADC8)),
+                    icon: const Icon(Icons.close, color: AppColors.subtext0),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
-              const Divider(color: Color(0xFF313244), height: 24),
+              const Divider(color: AppColors.surface0, height: 24),
 
               // Syntax & Operands
               _buildSectionTitle('SYNTAX & OPERANDS'),
@@ -90,7 +92,7 @@ class InstructionDetailDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF11111B),
+                  color: AppColors.crust,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: SelectableText(
@@ -99,7 +101,7 @@ class InstructionDetailDialog extends StatelessWidget {
                     fontFamily: 'monospace',
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFCDD6F4),
+                    color: AppColors.text,
                   ),
                 ),
               ),
@@ -111,9 +113,9 @@ class InstructionDetailDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF11111B),
+                  color: AppColors.crust,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF313244)),
+                  border: Border.all(color: AppColors.surface0),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +124,7 @@ class InstructionDetailDialog extends StatelessWidget {
                       children: [
                         const Text(
                           'Encoding: ',
-                          style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                          style: TextStyle(color: AppColors.subtext0, fontSize: 12),
                         ),
                         Expanded(
                           child: SelectableText(
@@ -131,7 +133,7 @@ class InstructionDetailDialog extends StatelessWidget {
                               fontFamily: 'monospace',
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFA6E3A1),
+                              color: AppColors.green,
                             ),
                           ),
                         ),
@@ -143,7 +145,7 @@ class InstructionDetailDialog extends StatelessWidget {
                         children: [
                           const Text(
                             'Prefix Info: ',
-                            style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                            style: TextStyle(color: AppColors.subtext0, fontSize: 12),
                           ),
                           Expanded(
                             child: SelectableText(
@@ -151,7 +153,7 @@ class InstructionDetailDialog extends StatelessWidget {
                               style: const TextStyle(
                                 fontFamily: 'monospace',
                                 fontSize: 12,
-                                color: Color(0xFFF9E2AF),
+                                color: AppColors.yellow,
                               ),
                             ),
                           ),
@@ -169,7 +171,7 @@ class InstructionDetailDialog extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF181825),
+                  color: AppColors.mantle,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: SelectableText(
@@ -177,7 +179,7 @@ class InstructionDetailDialog extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     height: 1.5,
-                    color: Color(0xFFCDD6F4),
+                    color: AppColors.text,
                   ),
                 ),
               ),
@@ -196,7 +198,7 @@ class InstructionDetailDialog extends StatelessWidget {
                           doc.affectedFlags,
                           style: const TextStyle(
                             fontFamily: 'monospace',
-                            color: Color(0xFFA6ADC8),
+                            color: AppColors.subtext0,
                             fontSize: 12,
                           ),
                         ),
@@ -212,7 +214,7 @@ class InstructionDetailDialog extends StatelessWidget {
                           _buildSectionTitle('SPECIFICATION SOURCE'),
                           Text(
                             doc.sourceDb,
-                            style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                            style: const TextStyle(color: AppColors.subtext0, fontSize: 12),
                           ),
                         ],
                       ),
@@ -223,55 +225,57 @@ class InstructionDetailDialog extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // Action Hooks Toolbar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFA6ADC8),
-                      side: const BorderSide(color: Color(0xFF45475A)),
-                    ),
-                    icon: const Icon(Icons.copy, size: 14),
-                    label: const Text('Copy Mnemonic'),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: doc.mnemonic));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Copied ${doc.mnemonic} to clipboard')),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFA6ADC8),
-                      side: const BorderSide(color: Color(0xFF45475A)),
-                    ),
-                    icon: const Icon(Icons.data_object, size: 14),
-                    label: const Text('Copy Opcode'),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: doc.opcodeEncoding));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Copied ${doc.opcodeEncoding} to clipboard')),
-                      );
-                    },
-                  ),
-                  if (onFilterByIsa != null) ...[
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF313244),
-                        foregroundColor: const Color(0xFF89B4FA),
+              // Action Hooks Toolbar (Wrap to prevent overflow on narrow screens)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.subtext0,
+                        side: const BorderSide(color: AppColors.surface1),
                       ),
-                      icon: const Icon(Icons.filter_alt, size: 14),
-                      label: Text('Filter ${doc.isaExtension}'),
+                      icon: const Icon(Icons.copy, size: 14),
+                      label: const Text('Copy Mnemonic'),
                       onPressed: () {
-                        Navigator.of(context).pop();
-                        onFilterByIsa!();
+                        Clipboard.setData(ClipboardData(text: doc.mnemonic));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Copied ${doc.mnemonic} to clipboard')),
+                        );
                       },
                     ),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.subtext0,
+                        side: const BorderSide(color: AppColors.surface1),
+                      ),
+                      icon: const Icon(Icons.data_object, size: 14),
+                      label: const Text('Copy Opcode'),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: doc.opcodeEncoding));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Copied ${doc.opcodeEncoding} to clipboard')),
+                        );
+                      },
+                    ),
+                    if (onFilterByIsa != null)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.surface0,
+                          foregroundColor: AppColors.blue,
+                        ),
+                        icon: const Icon(Icons.filter_alt, size: 14),
+                        label: Text('Filter ${doc.isaExtension}'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          onFilterByIsa!();
+                        },
+                      ),
                   ],
-                ],
+                ),
               ),
             ],
           ),
@@ -289,22 +293,8 @@ class InstructionDetailDialog extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.1,
-          color: Color(0xFF89B4FA),
+          color: AppColors.blue,
         ),
-      ),
-    );
-  }
-
-  Widget _buildBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }

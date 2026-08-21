@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/compilation_result.dart';
 import '../models/cpu_capability.dart';
 import '../providers/explorer_provider.dart';
+import '../theme/app_colors.dart';
 import 'cpu_capabilities_dialog.dart';
 
 class ComparisonView extends StatelessWidget {
@@ -19,8 +21,8 @@ class ComparisonView extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: const BoxDecoration(
-            color: Color(0xFF181825),
-            border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+            color: AppColors.mantle,
+            border: Border(bottom: BorderSide(color: AppColors.surface0)),
           ),
           child: Column(
             children: [
@@ -31,13 +33,13 @@ class ComparisonView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E2E),
+                        color: AppColors.base,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF89B4FA).withOpacity(0.5)),
+                        border: Border.all(color: AppColors.blue.withOpacity(0.5)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.looks_one, color: Color(0xFF89B4FA), size: 18),
+                          const Icon(Icons.looks_one, color: AppColors.blue, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
@@ -46,14 +48,14 @@ class ComparisonView extends StatelessWidget {
                                 Text(
                                   'Target A: ${provider.arch.name} (${provider.optLevel.flag})',
                                   style: const TextStyle(
-                                    color: Color(0xFFCDD6F4),
+                                    color: AppColors.text,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
                                 ),
                                 Text(
                                   'Flags: ${provider.activeCpuFlags.isEmpty ? "Default" : provider.activeCpuFlags.join(" ")}',
-                                  style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 11),
+                                  style: const TextStyle(color: AppColors.subtext0, fontSize: 11),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -66,7 +68,7 @@ class ComparisonView extends StatelessWidget {
 
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(Icons.compare_arrows, color: Color(0xFFF9E2AF), size: 24),
+                    child: Icon(Icons.compare_arrows, color: AppColors.yellow, size: 24),
                   ),
 
                   // Target B Config Controls
@@ -74,13 +76,13 @@ class ComparisonView extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E2E),
+                        color: AppColors.base,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFF38BA8).withOpacity(0.5)),
+                        border: Border.all(color: AppColors.red.withOpacity(0.5)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.looks_two, color: Color(0xFFF38BA8), size: 18),
+                          const Icon(Icons.looks_two, color: AppColors.red, size: 18),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
@@ -90,14 +92,14 @@ class ComparisonView extends StatelessWidget {
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
                                     children: [
-                                      const Text('Target B: ', style: TextStyle(color: Color(0xFFCDD6F4), fontSize: 12)),
+                                      const Text('Target B: ', style: TextStyle(color: AppColors.text, fontSize: 12)),
                                       // Arch Dropdown
                                       DropdownButton<TargetArch>(
                                         value: provider.compareArch,
                                         isDense: true,
                                         underline: const SizedBox(),
-                                        dropdownColor: const Color(0xFF1E1E2E),
-                                        style: const TextStyle(color: Color(0xFFF38BA8), fontSize: 12, fontWeight: FontWeight.bold),
+                                        dropdownColor: AppColors.base,
+                                        style: const TextStyle(color: AppColors.red, fontSize: 12, fontWeight: FontWeight.bold),
                                         items: TargetArch.values.map((a) {
                                           return DropdownMenuItem(value: a, child: Text(a.name));
                                         }).toList(),
@@ -111,8 +113,8 @@ class ComparisonView extends StatelessWidget {
                                         value: provider.compareOptLevel,
                                         isDense: true,
                                         underline: const SizedBox(),
-                                        dropdownColor: const Color(0xFF1E1E2E),
-                                        style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 12, fontWeight: FontWeight.bold),
+                                        dropdownColor: AppColors.base,
+                                        style: const TextStyle(color: AppColors.green, fontSize: 12, fontWeight: FontWeight.bold),
                                         items: OptimizationLevel.values.map((o) {
                                           return DropdownMenuItem(value: o, child: Text(o.flag));
                                         }).toList(),
@@ -132,12 +134,12 @@ class ComparisonView extends StatelessWidget {
                                           padding: EdgeInsets.zero,
                                           visualDensity: VisualDensity.compact,
                                         ),
-                                        icon: const Icon(Icons.memory, color: Color(0xFF89B4FA), size: 14),
+                                        icon: const Icon(Icons.memory, color: AppColors.blue, size: 14),
                                         label: Text(
                                           provider.compareFeatureIds.isEmpty
                                               ? 'Set CPU Flags'
                                               : '${provider.compareFeatureIds.length} CPU Flags',
-                                          style: const TextStyle(color: Color(0xFF89B4FA), fontSize: 11),
+                                          style: const TextStyle(color: AppColors.blue, fontSize: 11),
                                         ),
                                         onPressed: () {
                                           showDialog(
@@ -150,7 +152,7 @@ class ComparisonView extends StatelessWidget {
                                         const SizedBox(width: 4),
                                         Text(
                                           provider.compareActiveCpuFlags.join(' '),
-                                          style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 11),
+                                          style: const TextStyle(color: AppColors.subtext0, fontSize: 11),
                                         ),
                                       ],
                                     ],
@@ -166,11 +168,13 @@ class ComparisonView extends StatelessWidget {
                 ],
               ),
 
-              // Metrics comparison row
+              // Metrics comparison row (Wrap avoids overflow on narrow screen)
               if (resultA != null && resultB != null && resultA.success && resultB.success) ...[
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                Wrap(
+                  alignment: WrapAlignment.spaceAround,
+                  spacing: 16,
+                  runSpacing: 6,
                   children: [
                     _buildDeltaBadge(
                       label: 'Code Size (.text)',
@@ -198,21 +202,21 @@ class ComparisonView extends StatelessWidget {
             children: [
               // Target A Pane
               Expanded(
-                child: _buildPane(
+                child: ComparisonPane(
                   title: 'Target A (${provider.arch.id.toUpperCase()} ${provider.optLevel.flag})',
                   result: resultA,
                   isLoading: provider.isCompiling,
-                  headerColor: const Color(0xFF89B4FA),
+                  headerColor: AppColors.blue,
                 ),
               ),
-              const VerticalDivider(color: Color(0xFF313244), width: 1),
+              const VerticalDivider(color: AppColors.surface0, width: 1),
               // Target B Pane
               Expanded(
-                child: _buildPane(
+                child: ComparisonPane(
                   title: 'Target B (${provider.compareArch.id.toUpperCase()} ${provider.compareOptLevel.flag})',
                   result: resultB,
                   isLoading: provider.isCompareCompiling,
-                  headerColor: const Color(0xFFF38BA8),
+                  headerColor: AppColors.red,
                 ),
               ),
             ],
@@ -231,15 +235,16 @@ class ComparisonView extends StatelessWidget {
   }) {
     final isReduction = delta < 0;
     final color = delta == 0
-        ? const Color(0xFFA6ADC8)
-        : (isReduction ? const Color(0xFFA6E3A1) : const Color(0xFFF9E2AF));
+        ? AppColors.subtext0
+        : (isReduction ? AppColors.green : AppColors.yellow);
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label: ', style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 11)),
-        Text(valA, style: const TextStyle(color: Color(0xFF89B4FA), fontWeight: FontWeight.bold, fontSize: 11)),
-        const Text('  vs  ', style: TextStyle(color: Color(0xFF585B70), fontSize: 11)),
-        Text(valB, style: const TextStyle(color: Color(0xFFF38BA8), fontWeight: FontWeight.bold, fontSize: 11)),
+        Text('$label: ', style: const TextStyle(color: AppColors.subtext0, fontSize: 11)),
+        Text(valA, style: const TextStyle(color: AppColors.blue, fontWeight: FontWeight.bold, fontSize: 11)),
+        const Text('  vs  ', style: TextStyle(color: AppColors.surface2, fontSize: 11)),
+        Text(valB, style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.bold, fontSize: 11)),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -255,20 +260,47 @@ class ComparisonView extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildPane({
-    required String title,
-    required dynamic result,
-    required bool isLoading,
-    required Color headerColor,
-  }) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+class ComparisonPane extends StatefulWidget {
+  final String title;
+  final CompilationResult? result;
+  final bool isLoading;
+  final Color headerColor;
+
+  const ComparisonPane({
+    super.key,
+    required this.title,
+    required this.result,
+    required this.isLoading,
+    required this.headerColor,
+  });
+
+  @override
+  State<ComparisonPane> createState() => _ComparisonPaneState();
+}
+
+class _ComparisonPaneState extends State<ComparisonPane> {
+  final ScrollController _horizontalController = ScrollController();
+  final ScrollController _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    _verticalController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.blue));
     }
 
+    final result = widget.result;
     if (result == null) {
       return const Center(
-        child: Text('No result', style: TextStyle(color: Color(0xFF6C7086))),
+        child: Text('No result', style: TextStyle(color: AppColors.overlay0)),
       );
     }
 
@@ -280,10 +312,10 @@ class ComparisonView extends StatelessWidget {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SelectableText(
-              result.stderr.toString(),
+              result.stderr,
               style: const TextStyle(
                 fontFamily: 'monospace',
-                color: Color(0xFFF38BA8),
+                color: AppColors.red,
                 fontSize: 11,
               ),
             ),
@@ -292,52 +324,56 @@ class ComparisonView extends StatelessWidget {
       );
     }
 
-    final asm = (result.filteredAssembly as String).isNotEmpty
-        ? result.filteredAssembly as String
-        : result.rawAssembly as String;
+    final asm = result.filteredAssembly.isNotEmpty
+        ? result.filteredAssembly
+        : result.rawAssembly;
     final lines = asm.split('\n');
 
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          color: const Color(0xFF181825),
+          color: AppColors.mantle,
           child: Row(
             children: [
               Text(
-                title,
-                style: TextStyle(color: headerColor, fontWeight: FontWeight.bold, fontSize: 12),
+                widget.title,
+                style: TextStyle(color: widget.headerColor, fontWeight: FontWeight.bold, fontSize: 12),
               ),
               const Spacer(),
               Text(
                 '${lines.length} lines | ${result.codeSizeBytes} B',
-                style: const TextStyle(color: Color(0xFF6C7086), fontSize: 11),
+                style: const TextStyle(color: AppColors.overlay0, fontSize: 11),
               ),
             ],
           ),
         ),
         Expanded(
           child: Container(
-            color: const Color(0xFF11111B),
+            color: AppColors.crust,
             child: RawScrollbar(
+              controller: _horizontalController,
               thumbVisibility: true,
               trackVisibility: true,
-              thumbColor: const Color(0xFF45475A),
-              trackColor: const Color(0xFF181825),
+              thumbColor: AppColors.surface1,
+              trackColor: AppColors.mantle,
               thickness: 10,
               radius: const Radius.circular(5),
               notificationPredicate: (n) => n.depth == 0,
               child: SingleChildScrollView(
+                controller: _horizontalController,
                 scrollDirection: Axis.horizontal,
                 child: RawScrollbar(
+                  controller: _verticalController,
                   thumbVisibility: true,
                   trackVisibility: true,
-                  thumbColor: const Color(0xFF45475A),
-                  trackColor: const Color(0xFF181825),
+                  thumbColor: AppColors.surface1,
+                  trackColor: AppColors.mantle,
                   thickness: 8,
                   radius: const Radius.circular(4),
                   notificationPredicate: (n) => n.depth == 0,
                   child: SingleChildScrollView(
+                    controller: _verticalController,
                     scrollDirection: Axis.vertical,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     child: SelectionArea(
@@ -358,7 +394,7 @@ class ComparisonView extends StatelessWidget {
                                     textAlign: TextAlign.right,
                                     style: const TextStyle(
                                       fontFamily: 'monospace',
-                                      color: Color(0xFF45475A),
+                                      color: AppColors.surface1,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -368,7 +404,7 @@ class ComparisonView extends StatelessWidget {
                                   line,
                                   style: TextStyle(
                                     fontFamily: 'monospace',
-                                    color: line.trim().endsWith(':') ? const Color(0xFFF9E2AF) : const Color(0xFFCDD6F4),
+                                    color: line.trim().endsWith(':') ? AppColors.yellow : AppColors.text,
                                     fontSize: 12,
                                   ),
                                 ),
