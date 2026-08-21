@@ -131,18 +131,27 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
   }
 
   Widget _buildHexDumpView(String hexDump) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
+    return RawScrollbar(
+      thumbVisibility: true,
+      trackVisibility: true,
+      thumbColor: const Color(0xFF45475A),
+      trackColor: const Color(0xFF181825),
+      thickness: 10,
+      radius: const Radius.circular(5),
+      notificationPredicate: (n) => n.depth == 0,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(12),
-        child: SelectableText(
-          hexDump.isNotEmpty ? hexDump : 'No hex dump available.',
-          style: const TextStyle(
-            fontFamily: 'monospace',
-            color: Color(0xFFA6ADC8),
-            fontSize: 12,
-            height: 1.4,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          padding: const EdgeInsets.all(12),
+          child: SelectableText(
+            hexDump.isNotEmpty ? hexDump : 'No hex dump available.',
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              color: Color(0xFFA6ADC8),
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ),
       ),
@@ -156,14 +165,22 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
       builder: (context, constraints) {
         final minTableWidth = constraints.maxWidth > 650 ? constraints.maxWidth : 650.0;
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: minTableWidth,
-            height: constraints.maxHeight,
-            child: SelectionArea(
-              child: Column(
-                children: [
+        return RawScrollbar(
+          thumbVisibility: true,
+          trackVisibility: true,
+          thumbColor: const Color(0xFF45475A),
+          trackColor: const Color(0xFF181825),
+          thickness: 10,
+          radius: const Radius.circular(5),
+          notificationPredicate: (n) => n.depth == 0,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: minTableWidth,
+              height: constraints.maxHeight,
+              child: SelectionArea(
+                child: Column(
+                  children: [
                   // Table Header
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -293,10 +310,11 @@ class _MachineCodeViewerState extends State<MachineCodeViewer> {
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   TextStyle get _headerStyle => const TextStyle(
         fontSize: 11,

@@ -319,47 +319,65 @@ class ComparisonView extends StatelessWidget {
         Expanded(
           child: Container(
             color: const Color(0xFF11111B),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              padding: const EdgeInsets.all(8),
+            child: RawScrollbar(
+              thumbVisibility: true,
+              trackVisibility: true,
+              thumbColor: const Color(0xFF45475A),
+              trackColor: const Color(0xFF181825),
+              thickness: 10,
+              radius: const Radius.circular(5),
+              notificationPredicate: (n) => n.depth == 0,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: SelectionArea(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(lines.length, (index) {
-                      final line = lines[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 32,
-                              child: Text(
-                                '${index + 1}',
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  color: Color(0xFF45475A),
-                                  fontSize: 11,
+                child: RawScrollbar(
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  thumbColor: const Color(0xFF45475A),
+                  trackColor: const Color(0xFF181825),
+                  thickness: 8,
+                  radius: const Radius.circular(4),
+                  notificationPredicate: (n) => n.depth == 0,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: List.generate(lines.length, (index) {
+                          final line = lines[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 32,
+                                  child: Text(
+                                    '${index + 1}',
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      color: Color(0xFF45475A),
+                                      fontSize: 11,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  line,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    color: line.trim().endsWith(':') ? const Color(0xFFF9E2AF) : const Color(0xFFCDD6F4),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              line,
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                color: line.trim().endsWith(':') ? const Color(0xFFF9E2AF) : const Color(0xFFCDD6F4),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                          );
+                        }),
+                      ),
+                    ),
                   ),
                 ),
               ),

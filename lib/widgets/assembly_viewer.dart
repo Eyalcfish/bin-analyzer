@@ -3,8 +3,23 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/explorer_provider.dart';
 
-class AssemblyViewer extends StatelessWidget {
+class AssemblyViewer extends StatefulWidget {
   const AssemblyViewer({super.key});
+
+  @override
+  State<AssemblyViewer> createState() => _AssemblyViewerState();
+}
+
+class _AssemblyViewerState extends State<AssemblyViewer> {
+  final ScrollController _horizontalController = ScrollController();
+  final ScrollController _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    _verticalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,23 +171,44 @@ class AssemblyViewer extends StatelessWidget {
           ),
         ),
 
-        // Assembly Lines Area with Bidirectional Scrolling and Full Hit-Testing
+        // Assembly Lines Area with Dedicated Visible Horizontal & Vertical Scrollbars
         Expanded(
           child: Container(
             color: const Color(0xFF11111B),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+            child: RawScrollbar(
+              controller: _horizontalController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              thumbColor: const Color(0xFF45475A),
+              trackColor: const Color(0xFF181825),
+              thickness: 10,
+              radius: const Radius.circular(5),
+              notificationPredicate: (n) => n.depth == 0,
               child: SingleChildScrollView(
+                controller: _horizontalController,
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: SelectionArea(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(lines.length, (index) {
-                      final line = lines[index];
-                      return _buildAssemblyLine(index + 1, line);
-                    }),
+                child: RawScrollbar(
+                  controller: _verticalController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  thumbColor: const Color(0xFF45475A),
+                  trackColor: const Color(0xFF181825),
+                  thickness: 8,
+                  radius: const Radius.circular(4),
+                  notificationPredicate: (n) => n.depth == 0,
+                  child: SingleChildScrollView(
+                    controller: _verticalController,
+                    scrollDirection: Axis.vertical,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: SelectionArea(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: List.generate(lines.length, (index) {
+                          final line = lines[index];
+                          return _buildAssemblyLine(index + 1, line);
+                        }),
+                      ),
+                    ),
                   ),
                 ),
               ),
