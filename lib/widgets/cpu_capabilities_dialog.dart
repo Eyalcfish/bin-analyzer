@@ -171,58 +171,61 @@ class CpuCapabilitiesDialog extends StatelessWidget {
                           final isSelected = selectedIds.contains(feat.id);
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 3),
-                            decoration: BoxDecoration(
+                            child: Material(
                               color: isSelected ? const Color(0xFF313244) : Colors.transparent,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFF89B4FA) : const Color(0xFF2A2B3D),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                                side: BorderSide(
+                                  color: isSelected ? const Color(0xFF89B4FA) : const Color(0xFF2A2B3D),
+                                ),
                               ),
-                            ),
-                            child: CheckboxListTile(
-                              dense: true,
-                              value: isSelected,
-                              activeColor: const Color(0xFF89B4FA),
-                              checkColor: const Color(0xFF11111B),
-                              onChanged: (val) {
-                                if (isComparison) {
-                                  provider.toggleCompareCpuFeature(feat.id);
-                                } else {
-                                  provider.toggleCpuFeature(feat.id);
-                                }
-                              },
-                              title: Row(
-                                children: [
-                                  Text(
-                                    feat.name,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                      color: isSelected ? const Color(0xFFCDD6F4) : const Color(0xFFA6ADC8),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF11111B),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      feat.flag,
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        color: Color(0xFFA6E3A1),
+                              clipBehavior: Clip.antiAlias,
+                              child: CheckboxListTile(
+                                dense: true,
+                                value: isSelected,
+                                activeColor: const Color(0xFF89B4FA),
+                                checkColor: const Color(0xFF11111B),
+                                onChanged: (val) {
+                                  if (isComparison) {
+                                    provider.toggleCompareCpuFeature(feat.id);
+                                  } else {
+                                    provider.toggleCpuFeature(feat.id);
+                                  }
+                                },
+                                title: Row(
+                                  children: [
+                                    Text(
+                                      feat.name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected ? const Color(0xFFCDD6F4) : const Color(0xFFA6ADC8),
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF11111B),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        feat.flag,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 11,
+                                          color: Color(0xFFA6E3A1),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    feat.description,
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF6C7086)),
                                   ),
-                                ],
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  feat.description,
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF6C7086)),
                                 ),
                               ),
                             ),
@@ -238,16 +241,19 @@ class CpuCapabilitiesDialog extends StatelessWidget {
 
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${selectedIds.length} capability flag(s) active: ${isComparison ? provider.compareActiveCpuFlags.join(' ') : provider.activeCpuFlags.join(' ')}',
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    color: Color(0xFFA6E3A1),
+                Expanded(
+                  child: Text(
+                    '${selectedIds.length} capability flag(s) active: ${isComparison ? provider.compareActiveCpuFlags.join(' ') : provider.activeCpuFlags.join(' ')}',
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Color(0xFFA6E3A1),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 12),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF89B4FA),

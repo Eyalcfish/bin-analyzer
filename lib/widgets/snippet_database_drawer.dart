@@ -131,14 +131,16 @@ class SnippetDatabaseDrawer extends StatelessWidget {
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
+                          child: Material(
                             color: isCurrent ? const Color(0xFF313244) : const Color(0xFF1E1E2E),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isCurrent ? const Color(0xFF89B4FA) : const Color(0xFF2A2B3D),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: isCurrent ? const Color(0xFF89B4FA) : const Color(0xFF2A2B3D),
+                              ),
                             ),
-                          ),
-                          child: ListTile(
+                            clipBehavior: Clip.antiAlias,
+                            child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             title: Row(
                               children: [
@@ -202,7 +204,8 @@ class SnippetDatabaseDrawer extends StatelessWidget {
                               Navigator.of(context).pop();
                             },
                           ),
-                        );
+                        ),
+                      );
                       },
                     ),
             ),
