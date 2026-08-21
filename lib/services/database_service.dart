@@ -124,6 +124,9 @@ class DatabaseService {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_mnemonic ON instruction_docs(mnemonic);');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_isa ON instruction_docs(isa_extension);');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_category ON instruction_docs(category);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_isa ON instruction_docs(arch, isa_extension);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_mnemonic ON instruction_docs(arch, mnemonic);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch_cat ON instruction_docs(arch, category);');
   }
 
   Future<void> _seedDefaultSnippets(Database db) async {
@@ -158,11 +161,13 @@ class DatabaseService {
     int count = 0;
 
     for (final item in list) {
-      final doc = InstructionDoc.fromJson(item as Map<String, dynamic>);
-      final map = doc.toMap();
-      map['created_at'] = DateTime.now().toIso8601String();
-      batch.insert('instruction_docs', map, conflictAlgorithm: ConflictAlgorithm.replace);
-      count++;
+      if (item is Map<String, dynamic>) {
+        final doc = InstructionDoc.fromJson(item);
+        final map = doc.toMap();
+        map['created_at'] = DateTime.now().toIso8601String();
+        batch.insert('instruction_docs', map, conflictAlgorithm: ConflictAlgorithm.replace);
+        count++;
+      }
     }
 
     await batch.commit(noResult: true);
@@ -176,6 +181,8 @@ class DatabaseService {
     TargetArch? arch,
     String? isaExtension,
     String? category,
+    int? limit,
+    int? offset,
   }) async {
     final db = await database;
     final whereClauses = <String>[];
@@ -209,9 +216,54 @@ class DatabaseService {
       where: where,
       whereArgs: whereArgs.isEmpty ? null : whereArgs,
       orderBy: 'arch ASC, isa_extension ASC, mnemonic ASC',
+      limit: limit,
+      offset: offset,
     );
 
     return maps.map((m) => InstructionDoc.fromMap(m)).toList();
+  }
+
+  Future<int> countInstructions({
+    String? query,
+    TargetArch? arch,
+    String? isaExtension,
+    String? category,
+  }) async {
+    final db = await database;
+    final whereClauses = <String>[];
+    final whereArgs = <dynamic>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      final q = '%${query.trim()}%';
+      whereClauses.add('(mnemonic LIKE ? OR opcode_encoding LIKE ? OR summary LIKE ? OR description LIKE ?)');
+      whereArgs.addAll([q, q, q, q]);
+    }
+
+    if (arch != null) {
+      whereClauses.add('arch = ?');
+      whereArgs.add(arch.id);
+    }
+
+    if (isaExtension != null && isaExtension != 'All') {
+      whereClauses.add('isa_extension = ?');
+      whereArgs.add(isaExtension);
+    }
+
+    if (category != null && category != 'All') {
+      whereClauses.add('category = ?');
+      whereArgs.add(category);
+    }
+
+    String sql = 'SELECT COUNT(*) as count FROM instruction_docs';
+    if (whereClauses.isNotEmpty) {
+      sql += ' WHERE ${whereClauses.join(' AND ')}';
+    }
+
+    final result = await db.rawQuery(sql, whereArgs.isEmpty ? null : whereArgs);
+    if (result.isNotEmpty) {
+      return (result.first['count'] as int?) ?? 0;
+    }
+    return 0;
   }
 
   Future<List<String>> getAvailableIsaExtensions({TargetArch? arch}) async {

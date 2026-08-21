@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +17,11 @@ class DocsScreen extends StatefulWidget {
 }
 
 class _DocsScreenState extends State<DocsScreen> {
+  static const int _pageSize = 80;
+
   final DatabaseService _dbService = DatabaseService.instance;
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   List<InstructionDoc> _instructions = [];
   List<String> _isaExtensions = ['All'];
@@ -26,17 +30,37 @@ class _DocsScreenState extends State<DocsScreen> {
   TargetArch? _selectedArch;
   String _selectedIsa = 'All';
   String _selectedCategory = 'All';
+
+  int _totalCount = 0;
+  int _currentOffset = 0;
+  bool _hasMore = true;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadFiltersAndData();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.position.pixels;
+      if (maxScroll - currentScroll <= 400 && !_isLoading && !_isLoadingMore && _hasMore) {
+        _loadNextPage();
+      }
+    }
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -60,18 +84,72 @@ class _DocsScreenState extends State<DocsScreen> {
   }
 
   Future<void> _fetchInstructions() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _currentOffset = 0;
+      _hasMore = true;
+    });
 
-    final results = await _dbService.getInstructions(
-      query: _searchController.text.trim(),
+    final query = _searchController.text.trim();
+    final countFuture = _dbService.countInstructions(
+      query: query,
       arch: _selectedArch,
       isaExtension: _selectedIsa,
       category: _selectedCategory,
     );
 
-    setState(() {
-      _instructions = results;
-      _isLoading = false;
+    final resultsFuture = _dbService.getInstructions(
+      query: query,
+      arch: _selectedArch,
+      isaExtension: _selectedIsa,
+      category: _selectedCategory,
+      limit: _pageSize,
+      offset: 0,
+    );
+
+    final results = await resultsFuture;
+    final total = await countFuture;
+
+    if (mounted) {
+      setState(() {
+        _instructions = results;
+        _totalCount = total;
+        _currentOffset = results.length;
+        _hasMore = results.length < total;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+
+    setState(() => _isLoadingMore = true);
+
+    final query = _searchController.text.trim();
+    final nextBatch = await _dbService.getInstructions(
+      query: query,
+      arch: _selectedArch,
+      isaExtension: _selectedIsa,
+      category: _selectedCategory,
+      limit: _pageSize,
+      offset: _currentOffset,
+    );
+
+    if (mounted) {
+      setState(() {
+        _instructions.addAll(nextBatch);
+        _currentOffset += nextBatch.length;
+        _hasMore = _instructions.length < _totalCount;
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String text) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 200), () {
+      _fetchInstructions();
     });
   }
 
@@ -398,16 +476,33 @@ class _DocsScreenState extends State<DocsScreen> {
           // Filter & Search Controls Header
           _buildFilterHeader(),
 
-          // Main Instruction List
+          // Main Instruction List (Virtual Chunked Rendering with Infinite Scroll)
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF89B4FA)))
                 : _instructions.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
+                        controller: _scrollController,
+                        cacheExtent: 1000,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: _instructions.length,
+                        itemCount: _instructions.length + (_hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index == _instructions.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Color(0xFF89B4FA),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
                           final doc = _instructions[index];
                           return _buildInstructionCard(doc);
                         },
@@ -460,7 +555,7 @@ class _DocsScreenState extends State<DocsScreen> {
                       borderSide: const BorderSide(color: Color(0xFF313244)),
                     ),
                   ),
-                  onChanged: (_) => _fetchInstructions(),
+                  onChanged: _onSearchChanged,
                 ),
               ),
               const SizedBox(width: 16),
@@ -472,7 +567,7 @@ class _DocsScreenState extends State<DocsScreen> {
                   border: Border.all(color: const Color(0xFF313244)),
                 ),
                 child: Text(
-                  '${_instructions.length} matching',
+                  '$_totalCount matching',
                   style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -608,6 +703,7 @@ class _DocsScreenState extends State<DocsScreen> {
 
   Widget _buildInstructionCard(InstructionDoc doc) {
     return Container(
+      key: ValueKey(doc.id),
       margin: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: const Color(0xFF1E1E2E),
