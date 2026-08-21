@@ -291,6 +291,69 @@ class _ComparisonPaneState extends State<ComparisonPane> {
     super.dispose();
   }
 
+  Widget _buildAssemblyLine(int lineNum, String line) {
+    final trimmed = line.trim();
+
+    Color textColor = AppColors.text;
+    FontWeight fontWeight = FontWeight.normal;
+
+    if (trimmed.endsWith(':')) {
+      // Label
+      textColor = AppColors.yellow;
+      fontWeight = FontWeight.bold;
+    } else if (trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith(';')) {
+      // Comment
+      textColor = AppColors.surface2;
+    } else if (trimmed.startsWith('.')) {
+      // Directive
+      textColor = AppColors.sky;
+    } else if (trimmed.startsWith('vadd') ||
+        trimmed.startsWith('vmov') ||
+        trimmed.startsWith('vfmadd') ||
+        trimmed.startsWith('fadd') ||
+        trimmed.startsWith('lea') ||
+        trimmed.startsWith('mov') ||
+        trimmed.startsWith('ret') ||
+        trimmed.startsWith('cmov') ||
+        trimmed.startsWith('csel') ||
+        trimmed.startsWith('popcnt')) {
+      // Key instructions highlighted
+      textColor = AppColors.blue;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text(
+              '$lineNum',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: AppColors.surface1,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            line,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              color: textColor,
+              fontSize: 12,
+              fontWeight: fontWeight,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
@@ -388,36 +451,7 @@ class _ComparisonPaneState extends State<ComparisonPane> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: List.generate(lines.length, (index) {
                                 final line = lines[index];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 32,
-                                        child: Text(
-                                          '${index + 1}',
-                                          textAlign: TextAlign.right,
-                                          style: const TextStyle(
-                                            fontFamily: 'monospace',
-                                            color: AppColors.surface1,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        line,
-                                        style: TextStyle(
-                                          fontFamily: 'monospace',
-                                          color: line.trim().endsWith(':') ? AppColors.yellow : AppColors.text,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
+                                return _buildAssemblyLine(index + 1, line);
                               }),
                             ),
                           ),
