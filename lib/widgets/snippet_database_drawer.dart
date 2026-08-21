@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/snippet.dart';
 import '../providers/explorer_provider.dart';
+import '../screens/docs_screen.dart';
 
 class SnippetDatabaseDrawer extends StatelessWidget {
   const SnippetDatabaseDrawer({super.key});
@@ -50,6 +51,38 @@ class SnippetDatabaseDrawer extends StatelessWidget {
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
+              ),
+            ),
+
+            // Hardware Docs Shortcut Tile
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Material(
+                color: const Color(0xFF313244),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: const BorderSide(color: Color(0xFF89B4FA)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.menu_book, color: Color(0xFF89B4FA)),
+                  title: const Text(
+                    'Hardware ISA & Opcodes',
+                    style: TextStyle(color: Color(0xFFCDD6F4), fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  subtitle: const Text(
+                    'Database of instructions and encodings',
+                    style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, color: Color(0xFF89B4FA), size: 14),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DocsScreen()),
+                    );
+                  },
+                ),
               ),
             ),
 

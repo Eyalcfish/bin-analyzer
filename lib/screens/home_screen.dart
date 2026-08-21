@@ -10,6 +10,7 @@ import '../widgets/cpu_capabilities_dialog.dart';
 import '../widgets/machine_code_viewer.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/snippet_database_drawer.dart';
+import 'docs_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -280,6 +281,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   : const Icon(Icons.play_arrow, size: 18),
               label: const Text('Compile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               onPressed: provider.isCompiling ? null : () => provider.compile(),
+            ),
+            const SizedBox(width: 8),
+
+            // Hardware Docs Button
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xFF313244),
+                foregroundColor: const Color(0xFF89B4FA),
+                side: const BorderSide(color: Color(0xFF89B4FA)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+              icon: const Icon(Icons.menu_book, size: 16),
+              label: const Text('Hardware Docs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DocsScreen()),
+                );
+              },
             ),
             const SizedBox(width: 8),
 
