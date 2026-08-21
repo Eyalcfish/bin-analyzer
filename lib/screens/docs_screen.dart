@@ -22,6 +22,7 @@ class _DocsScreenState extends State<DocsScreen> {
   final DatabaseService _dbService = DatabaseService.instance;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _filterTagsScrollController = ScrollController();
 
   List<InstructionDoc> _instructions = [];
   List<String> _isaExtensions = ['All'];
@@ -61,6 +62,7 @@ class _DocsScreenState extends State<DocsScreen> {
     _debounceTimer?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
+    _filterTagsScrollController.dispose();
     super.dispose();
   }
 
@@ -575,47 +577,107 @@ class _DocsScreenState extends State<DocsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Architecture Selector Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                const Text('Architecture: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
-                _buildArchChip('All', null),
-                _buildArchChip('AMD64 / x86_64', TargetArch.amd64),
-                _buildArchChip('ARM64 / AArch64', TargetArch.arm64),
-                _buildArchChip('RISC-V', TargetArch.riscv64),
-              ],
+          // Unified Scrollable Filter Tags Panel (Architecture, ISA Extension, Category)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 145),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141420),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF313244)),
+            ),
+            child: RawScrollbar(
+              controller: _filterTagsScrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              thumbColor: const Color(0xFF585B70),
+              trackColor: const Color(0xFF11111B),
+              thickness: 8,
+              radius: const Radius.circular(4),
+              child: SingleChildScrollView(
+                controller: _filterTagsScrollController,
+                scrollDirection: Axis.vertical,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Architecture Selector Chips
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          width: 100,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Text('Architecture:', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _buildArchChip('All', null),
+                              _buildArchChip('AMD64 / x86_64', TargetArch.amd64),
+                              _buildArchChip('ARM64 / AArch64', TargetArch.arm64),
+                              _buildArchChip('RISC-V', TargetArch.riscv64),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // ISA Extension Chips
+                    if (_isaExtensions.length > 1) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            width: 100,
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 6),
+                              child: Text('ISA Extension:', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _isaExtensions.map((isa) => _buildIsaChip(isa)).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Category Chips
+                    if (_categories.length > 1) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            width: 100,
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 6),
+                              child: Text('Category:', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: _categories.map((cat) => _buildCategoryChip(cat)).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-
-          // ISA Extension Chips
-          if (_isaExtensions.length > 1) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text('ISA Extension: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
-                  ..._isaExtensions.map((isa) => _buildIsaChip(isa)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-
-          // Category Chips
-          if (_categories.length > 1) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text('Category: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
-                  ..._categories.map((cat) => _buildCategoryChip(cat)),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
