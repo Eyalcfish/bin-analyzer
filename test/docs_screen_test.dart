@@ -68,7 +68,8 @@ void main() {
 
     // Verify screen title and action buttons
     expect(find.text('Hardware ISA & Opcode Documentation'), findsOneWidget);
-    expect(find.text('Import JSON File'), findsOneWidget);
+    expect(find.text('Import JSON'), findsOneWidget);
+    expect(find.text('Export JSON'), findsOneWidget);
 
     // Verify instructions rendered
     expect(find.text('vaddps'), findsOneWidget);
