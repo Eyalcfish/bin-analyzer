@@ -1,6 +1,8 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:path/path.dart' as p;
 import '../models/cpu_capability.dart';
 import '../models/instruction_doc.dart';
 import '../services/database_service.dart';
@@ -73,9 +75,52 @@ class _DocsScreenState extends State<DocsScreen> {
     });
   }
 
+  Future<void> _pickAndImportJsonFile({bool clearExisting = false}) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        dialogTitle: 'Select Hardware Documentation JSON File',
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final path = result.files.single.path;
+        if (path != null) {
+          final file = File(path);
+          if (await file.exists()) {
+            final content = await file.readAsString();
+            final count = await _dbService.importInstructionsFromJson(content, clearFirst: clearExisting);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: const Color(0xFF313244),
+                  content: Text(
+                    'Successfully imported $count instructions from ${p.basename(path)}!',
+                    style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
+                  ),
+                ),
+              );
+              _loadFiltersAndData();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFF38BA8),
+            content: Text('File import error: $e'),
+          ),
+        );
+      }
+    }
+  }
+
   void _showImportDialog() {
     final jsonTextController = TextEditingController();
     bool clearExisting = false;
+    String? selectedFilePath;
 
     showDialog(
       context: context,
@@ -90,21 +135,85 @@ class _DocsScreenState extends State<DocsScreen> {
             ],
           ),
           content: SizedBox(
-            width: 550,
+            width: 580,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Paste or import a JSON database conforming to the Hardware Documentation schema. '
-                  'All instructions will be indexed into SQLite.',
+                  'Select a .json file from your computer or paste raw JSON conforming to the Hardware Documentation schema.',
                   style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 13),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+
+                // File Picker Button
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF313244),
+                        foregroundColor: const Color(0xFF89B4FA),
+                        side: const BorderSide(color: Color(0xFF89B4FA)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                      icon: const Icon(Icons.folder_open, size: 16),
+                      label: const Text('Browse .JSON File...', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () async {
+                        try {
+                          final result = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ['json'],
+                            dialogTitle: 'Select JSON Spec File',
+                          );
+                          if (result != null && result.files.isNotEmpty) {
+                            final path = result.files.single.path;
+                            if (path != null) {
+                              final file = File(path);
+                              final content = await file.readAsString();
+                              setModalState(() {
+                                selectedFilePath = path;
+                                jsonTextController.text = content;
+                              });
+                            }
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(backgroundColor: const Color(0xFFF38BA8), content: Text('Error: $e')),
+                          );
+                        }
+                      },
+                    ),
+                    if (selectedFilePath != null) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          p.basename(selectedFilePath!),
+                          style: const TextStyle(
+                            color: Color(0xFFA6E3A1),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                const Text(
+                  'Or paste raw JSON content below:',
+                  style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: jsonTextController,
-                  maxLines: 8,
-                  style: GoogleFonts.firaCode(fontSize: 12, color: const Color(0xFFCDD6F4)),
+                  maxLines: 7,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: Color(0xFFCDD6F4),
+                  ),
                   decoration: const InputDecoration(
                     hintText: '{\n  "version": "1.0",\n  "instructions": [\n    ...\n  ]\n}',
                     hintStyle: TextStyle(color: Color(0xFF45475A)),
@@ -124,7 +233,7 @@ class _DocsScreenState extends State<DocsScreen> {
                       },
                     ),
                     const Text(
-                      'Replace all existing instructions (clear database)',
+                      'Replace all existing instructions (clear database first)',
                       style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
                     ),
                   ],
@@ -137,11 +246,14 @@ class _DocsScreenState extends State<DocsScreen> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Cancel', style: TextStyle(color: Color(0xFFA6ADC8))),
             ),
-            ElevatedButton(
+            ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF89B4FA),
                 foregroundColor: const Color(0xFF11111B),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               ),
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Import & Index into SQLite', style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () async {
                 final content = jsonTextController.text.trim();
                 if (content.isNotEmpty) {
@@ -152,7 +264,13 @@ class _DocsScreenState extends State<DocsScreen> {
                     );
                     Navigator.of(ctx).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Successfully imported $importedCount instructions into SQLite!')),
+                      SnackBar(
+                        backgroundColor: const Color(0xFF313244),
+                        content: Text(
+                          'Successfully imported $importedCount instructions into SQLite!',
+                          style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     );
                     _loadFiltersAndData();
                   } catch (e) {
@@ -162,7 +280,6 @@ class _DocsScreenState extends State<DocsScreen> {
                   }
                 }
               },
-              child: const Text('Import & Index', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -171,12 +288,47 @@ class _DocsScreenState extends State<DocsScreen> {
   }
 
   Future<void> _exportDatabase() async {
-    final jsonString = await _dbService.exportInstructionsToJson();
-    Clipboard.setData(ClipboardData(text: jsonString));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Database JSON copied to clipboard!')),
+    try {
+      final jsonString = await _dbService.exportInstructionsToJson();
+      final now = DateTime.now();
+      final defaultFileName = 'isa_instructions_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}.json';
+
+      final outputFile = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save Instructions Database JSON File',
+        fileName: defaultFileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
       );
+
+      if (outputFile != null) {
+        String finalPath = outputFile;
+        if (!finalPath.toLowerCase().endsWith('.json')) {
+          finalPath += '.json';
+        }
+        final file = File(finalPath);
+        await file.writeAsString(jsonString);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF313244),
+              content: Text(
+                'Successfully exported database to ${p.basename(finalPath)}!',
+                style: const TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFFF38BA8),
+            content: Text('Export error: $e'),
+          ),
+        );
+      }
     }
   }
 
@@ -205,20 +357,37 @@ class _DocsScreenState extends State<DocsScreen> {
           ],
         ),
         actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF313244),
+              foregroundColor: const Color(0xFF89B4FA),
+              side: const BorderSide(color: Color(0xFF89B4FA)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: const Icon(Icons.folder_open, size: 16),
+            label: const Text('Import JSON File', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            onPressed: () => _pickAndImportJsonFile(),
+          ),
+          const SizedBox(width: 8),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF89B4FA),
+              foregroundColor: const Color(0xFFCDD6F4),
               side: const BorderSide(color: Color(0xFF313244)),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
-            icon: const Icon(Icons.upload_file, size: 16),
-            label: const Text('Import Database JSON', style: TextStyle(fontSize: 12)),
+            icon: const Icon(Icons.paste, size: 16),
+            label: const Text('Paste / Custom Import', style: TextStyle(fontSize: 12)),
             onPressed: _showImportDialog,
           ),
           const SizedBox(width: 8),
-          IconButton(
-            tooltip: 'Export Database JSON',
-            icon: const Icon(Icons.download, color: Color(0xFFA6ADC8), size: 20),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFA6E3A1),
+              side: const BorderSide(color: Color(0xFF313244)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: const Icon(Icons.file_download, size: 16, color: Color(0xFFA6E3A1)),
+            label: const Text('Export to .JSON File', style: TextStyle(fontSize: 12)),
             onPressed: _exportDatabase,
           ),
           const SizedBox(width: 16),
