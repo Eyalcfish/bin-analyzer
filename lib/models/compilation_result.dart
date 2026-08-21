@@ -87,3 +87,49 @@ class CompilationResult {
     );
   }
 }
+
+class BinaryCompilationResult {
+  final bool success;
+  final String outputPath;
+  final String formatName;
+  final int fileSizeBytes;
+  final String commandExecuted;
+  final String stdout;
+  final String stderr;
+  final int exitCode;
+  final int durationMs;
+
+  BinaryCompilationResult({
+    required this.success,
+    required this.outputPath,
+    required this.formatName,
+    required this.fileSizeBytes,
+    required this.commandExecuted,
+    required this.stdout,
+    required this.stderr,
+    required this.exitCode,
+    required this.durationMs,
+  });
+
+  factory BinaryCompilationResult.failure({
+    required String outputPath,
+    required String formatName,
+    required String commandExecuted,
+    required String stdout,
+    required String stderr,
+    required int exitCode,
+    required int durationMs,
+  }) {
+    return BinaryCompilationResult(
+      success: false,
+      outputPath: outputPath,
+      formatName: formatName,
+      fileSizeBytes: 0,
+      commandExecuted: commandExecuted,
+      stdout: stdout,
+      stderr: stderr,
+      exitCode: exitCode,
+      durationMs: durationMs,
+    );
+  }
+}

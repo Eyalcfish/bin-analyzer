@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/cpu_capability.dart';
+import '../models/executable_binary.dart';
+import '../providers/executable_provider.dart';
 import '../providers/explorer_provider.dart';
 import '../widgets/assembly_viewer.dart';
 import '../widgets/code_editor_panel.dart';
@@ -11,6 +13,7 @@ import '../widgets/machine_code_viewer.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/snippet_database_drawer.dart';
 import 'docs_screen.dart';
+import 'executable_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -265,12 +268,39 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               const SizedBox(width: 10),
             ],
 
-            // Run / Compile Button
+            // Mode Switcher (C Source Compiler vs Executable Analyzer)
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF11111B),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF313244)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildModeTabButton('C Source Compiler', Icons.code, true, () {}),
+                  _buildModeTabButton('Executable Analyzer', Icons.biotech, false, () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ExecutableScreen()),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            const SizedBox(
+              height: 24,
+              child: VerticalDivider(color: Color(0xFF313244), width: 1),
+            ),
+            const SizedBox(width: 12),
+
+            // Run / Compile Assembly Button
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF89B4FA),
                 foregroundColor: const Color(0xFF11111B),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
               icon: provider.isCompiling
                   ? const SizedBox(
@@ -279,8 +309,91 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF11111B)),
                     )
                   : const Icon(Icons.play_arrow, size: 18),
-              label: const Text('Compile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              label: const Text('Compile ASM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               onPressed: provider.isCompiling ? null : () => provider.compile(),
+            ),
+            const SizedBox(width: 8),
+
+            // Build Binary Executable Dropdown Button
+            PopupMenuButton<BinaryOutputFormat>(
+              tooltip: 'Compile C Code to Executable Binary & Analyze',
+              color: const Color(0xFF1E1E2E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF313244),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFA6E3A1)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.build_circle, size: 16, color: Color(0xFFA6E3A1)),
+                    SizedBox(width: 6),
+                    Text('Build Binary...', style: TextStyle(color: Color(0xFFA6E3A1), fontWeight: FontWeight.bold, fontSize: 12)),
+                    Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFFA6E3A1)),
+                  ],
+                ),
+              ),
+              onSelected: (format) async {
+                final execProvider = context.read<ExecutableProvider>();
+                final success = await execProvider.compileFromSourceCode(
+                  sourceCode: provider.code,
+                  format: format,
+                  arch: provider.arch,
+                  optLevel: provider.optLevel,
+                  cpuFlags: provider.activeCpuFlags,
+                  extraFlags: provider.extraFlags,
+                );
+                if (success && context.mounted) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ExecutableScreen()),
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: BinaryOutputFormat.peExe,
+                  child: Row(
+                    children: [
+                      Icon(Icons.window, size: 16, color: Color(0xFF89B4FA)),
+                      SizedBox(width: 8),
+                      Text('Compile to Windows PE (.exe)', style: TextStyle(fontSize: 12, color: Color(0xFFCDD6F4))),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: BinaryOutputFormat.elfBinary,
+                  child: Row(
+                    children: [
+                      Icon(Icons.terminal, size: 16, color: Color(0xFFA6E3A1)),
+                      SizedBox(width: 8),
+                      Text('Compile to Linux ELF (.elf)', style: TextStyle(fontSize: 12, color: Color(0xFFCDD6F4))),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: BinaryOutputFormat.machOBinary,
+                  child: Row(
+                    children: [
+                      Icon(Icons.apple, size: 16, color: Color(0xFFCBA6F7)),
+                      SizedBox(width: 8),
+                      Text('Compile to macOS Mach-O (.macho)', style: TextStyle(fontSize: 12, color: Color(0xFFCDD6F4))),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: BinaryOutputFormat.relocatableObject,
+                  child: Row(
+                    children: [
+                      Icon(Icons.layers, size: 16, color: Color(0xFFFAB387)),
+                      SizedBox(width: 8),
+                      Text('Compile to Object File (.o)', style: TextStyle(fontSize: 12, color: Color(0xFFCDD6F4))),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 8),
 
@@ -312,6 +425,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   builder: (_) => const SettingsDialog(),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeTabButton(String title, IconData icon, bool isSelected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF313244) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: isSelected ? const Color(0xFFCBA6F7) : const Color(0xFFA6ADC8)),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? const Color(0xFFCDD6F4) : const Color(0xFFA6ADC8),
+              ),
             ),
           ],
         ),

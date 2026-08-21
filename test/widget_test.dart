@@ -5,7 +5,7 @@ import 'package:bin_analyzer/main.dart';
 
 void main() {
   testWidgets('BinAnalyzerApp smoke test & UI rendering with mouse hit testing', (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -17,10 +17,11 @@ void main() {
     expect(find.text('Assembly (.s)'), findsOneWidget);
     expect(find.text('Machine Code & Opcodes'), findsOneWidget);
     expect(find.text('Side-by-Side Comparison'), findsOneWidget);
-    expect(find.text('Compile'), findsOneWidget);
+    expect(find.text('Compile ASM'), findsOneWidget);
+    expect(find.text('Build Binary...'), findsOneWidget);
 
     // Compile code
-    await tester.tap(find.text('Compile'));
+    await tester.tap(find.text('Compile ASM'), warnIfMissed: false);
     for (int i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'providers/executable_provider.dart';
 import 'providers/explorer_provider.dart';
 import 'screens/home_screen.dart';
 
@@ -14,8 +15,11 @@ class BinAnalyzerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ExplorerProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ExplorerProvider()),
+        ChangeNotifierProvider(create: (_) => ExecutableProvider()),
+      ],
       child: MaterialApp(
         title: 'BinAnalyzer - C Assembly & Machine Code Explorer',
         debugShowCheckedModeBanner: false,

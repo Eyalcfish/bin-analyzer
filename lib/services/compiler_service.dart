@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../models/compilation_result.dart';
 import '../models/cpu_capability.dart';
+import '../models/executable_binary.dart';
 
 class CompilerService {
   String gccPath = 'C:\\MinGW-64\\bin\\gcc.exe';
@@ -350,5 +351,130 @@ class CompilerService {
     }
 
     return instructions;
+  }
+
+  Future<BinaryCompilationResult> compileToBinaryFile({
+    required String sourceCode,
+    required BinaryOutputFormat format,
+    required TargetArch arch,
+    required OptimizationLevel optLevel,
+    List<String> cpuFlags = const [],
+    String extraFlags = '',
+    String? customOutputPath,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final tempDir = Directory.systemTemp.createTempSync('bin_build_');
+    final uuid = const Uuid().v4().substring(0, 8);
+    final srcFile = File(p.join(tempDir.path, 'source_$uuid.c'));
+
+    final targetExt = format.extension;
+    final outFilePath = customOutputPath ?? p.join(tempDir.path, 'binary_$uuid.$targetExt');
+    final outFile = File(outFilePath);
+
+    try {
+      await srcFile.writeAsString(sourceCode);
+
+      final isX86 = arch == TargetArch.amd64 || arch == TargetArch.i386;
+      final compilerBin = isX86 && format == BinaryOutputFormat.peExe ? gccPath : clangPath;
+
+      final List<String> args = [];
+
+      // Architecture flags
+      if (arch == TargetArch.amd64) {
+        if (format == BinaryOutputFormat.elfBinary) {
+          args.add('--target=x86_64-linux-gnu');
+        } else if (format == BinaryOutputFormat.machOBinary) {
+          args.add('--target=x86_64-apple-darwin');
+        } else {
+          args.add('-m64');
+        }
+      } else if (arch == TargetArch.i386) {
+        if (format == BinaryOutputFormat.elfBinary) {
+          args.add('--target=i686-linux-gnu');
+        } else {
+          args.add('-m32');
+        }
+      } else if (arch == TargetArch.arm64) {
+        if (format == BinaryOutputFormat.machOBinary) {
+          args.add('--target=arm64-apple-darwin');
+        } else {
+          args.add('--target=aarch64-linux-gnu');
+        }
+      } else if (arch == TargetArch.arm32) {
+        args.add('--target=armv7-linux-gnueabihf');
+      } else if (arch == TargetArch.riscv64) {
+        args.add('--target=riscv64-linux-gnu');
+      }
+
+      // Optimization
+      args.add(optLevel.flag);
+      args.addAll(cpuFlags);
+
+      if (extraFlags.trim().isNotEmpty) {
+        args.addAll(extraFlags.trim().split(RegExp(r'\s+')));
+      }
+
+      // Format-specific flags
+      switch (format) {
+        case BinaryOutputFormat.peExe:
+          final hasMain = RegExp(r'\bint\s+main\s*\(').hasMatch(sourceCode) || RegExp(r'\bvoid\s+main\s*\(').hasMatch(sourceCode);
+          if (!hasMain) {
+            args.add('-shared'); // create a PE dynamic link library/freestanding binary
+          }
+          break;
+        case BinaryOutputFormat.elfBinary:
+          args.addAll(['-c', '-fPIC']); // relocatable ELF binary with full ELF headers, symbols, and sections
+          break;
+        case BinaryOutputFormat.machOBinary:
+          args.add('-c'); // Mach-O object / Mach-O binary
+          break;
+        case BinaryOutputFormat.relocatableObject:
+          args.add('-c');
+          break;
+      }
+
+      args.addAll([srcFile.path, '-o', outFile.path]);
+
+      final cmdStr = '$compilerBin ${args.join(' ')}';
+      final process = await Process.run(compilerBin, args);
+      stopwatch.stop();
+
+      if (process.exitCode != 0 || !await outFile.exists()) {
+        return BinaryCompilationResult.failure(
+          outputPath: outFilePath,
+          formatName: format.label,
+          commandExecuted: cmdStr,
+          stdout: process.stdout.toString(),
+          stderr: process.stderr.toString(),
+          exitCode: process.exitCode,
+          durationMs: stopwatch.elapsedMilliseconds,
+        );
+      }
+
+      final fileSizeBytes = await outFile.length();
+
+      return BinaryCompilationResult(
+        success: true,
+        outputPath: outFilePath,
+        formatName: format.label,
+        fileSizeBytes: fileSizeBytes,
+        commandExecuted: cmdStr,
+        stdout: process.stdout.toString(),
+        stderr: process.stderr.toString(),
+        exitCode: process.exitCode,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      return BinaryCompilationResult.failure(
+        outputPath: outFilePath,
+        formatName: format.label,
+        commandExecuted: 'compileToBinaryFile failed: $e',
+        stdout: '',
+        stderr: e.toString(),
+        exitCode: -1,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
+    }
   }
 }
