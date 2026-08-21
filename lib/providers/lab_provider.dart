@@ -21,6 +21,9 @@ class LabProvider extends ChangeNotifier {
   bool _isBenchmarking = false;
   String? _errorMessage;
 
+  // Comparison Mode (Side-by-Side Dual Code Workbench)
+  bool _isComparisonMode = false;
+
   // Selected format display in Register View ('hex', 'dec', 'signed_dec', 'bin', 'ascii')
   String _registerDisplayFormat = 'hex';
 
@@ -37,6 +40,7 @@ class LabProvider extends ChangeNotifier {
   bool get isExecuting => _isExecuting;
   bool get isBenchmarking => _isBenchmarking;
   String? get errorMessage => _errorMessage;
+  bool get isComparisonMode => _isComparisonMode;
   String get registerDisplayFormat => _registerDisplayFormat;
   int get benchmarkIterations => _benchmarkIterations;
 
@@ -167,6 +171,67 @@ cmp rax, 500
   void setSnippetType(LabSnippetType type) {
     _modifiedSnippet = _modifiedSnippet.copyWith(type: type);
     notifyListeners();
+  }
+
+  void setBaselineCode(String code) {
+    if (_baselineSnippet != null) {
+      _baselineSnippet = _baselineSnippet!.copyWith(code: code);
+    } else {
+      _baselineSnippet = _modifiedSnippet.copyWith(
+        id: const Uuid().v4().substring(0, 8),
+        title: 'Code A (Baseline)',
+        code: code,
+      );
+    }
+    notifyListeners();
+  }
+
+  void setBaselineType(LabSnippetType type) {
+    if (_baselineSnippet != null) {
+      _baselineSnippet = _baselineSnippet!.copyWith(type: type);
+      notifyListeners();
+    }
+  }
+
+  void toggleComparisonMode([bool? enabled]) {
+    _isComparisonMode = enabled ?? !_isComparisonMode;
+    if (_isComparisonMode && _baselineSnippet == null) {
+      _baselineSnippet = _modifiedSnippet.copyWith(
+        id: const Uuid().v4().substring(0, 8),
+        title: 'Code A (Baseline)',
+      );
+    }
+    notifyListeners();
+  }
+
+  void cloneBaselineToModified() {
+    if (_baselineSnippet != null) {
+      _modifiedSnippet = _baselineSnippet!.copyWith(
+        id: const Uuid().v4().substring(0, 8),
+        title: 'Code B (Variant)',
+      );
+      notifyListeners();
+    }
+  }
+
+  void cloneModifiedToBaseline() {
+    _baselineSnippet = _modifiedSnippet.copyWith(
+      id: const Uuid().v4().substring(0, 8),
+      title: 'Code A (Baseline)',
+    );
+    notifyListeners();
+  }
+
+  void swapSnippets() {
+    if (_baselineSnippet != null) {
+      final temp = _baselineSnippet!;
+      _baselineSnippet = _modifiedSnippet.copyWith(title: 'Code A (Baseline)');
+      _modifiedSnippet = temp.copyWith(title: 'Code B (Variant)');
+      final tempExec = _baselineExecution;
+      _baselineExecution = _modifiedExecution;
+      _modifiedExecution = tempExec;
+      notifyListeners();
+    }
   }
 
   void setRegisterDisplayFormat(String format) {
