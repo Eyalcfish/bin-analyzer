@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import '../models/compilation_result.dart';
+import '../models/cpu_capability.dart';
+import '../models/instruction_doc.dart';
 import '../models/snippet.dart';
 
 class DatabaseService {
@@ -43,46 +47,231 @@ class DatabaseService {
     final db = await databaseFactory.openDatabase(
       dbPath,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE snippets (
-              id TEXT PRIMARY KEY,
-              title TEXT NOT NULL,
-              description TEXT NOT NULL,
-              category TEXT NOT NULL,
-              code TEXT NOT NULL,
-              recommended_arch TEXT NOT NULL,
-              recommended_opt TEXT NOT NULL,
-              recommended_features TEXT NOT NULL,
-              is_preset INTEGER NOT NULL,
-              created_at TEXT NOT NULL
-            )
-          ''');
-
-          await db.execute('''
-            CREATE TABLE compilation_history (
-              id TEXT PRIMARY KEY,
-              snippet_title TEXT NOT NULL,
-              code TEXT NOT NULL,
-              arch TEXT NOT NULL,
-              opt_level TEXT NOT NULL,
-              applied_flags TEXT NOT NULL,
-              code_size INTEGER NOT NULL,
-              created_at TEXT NOT NULL
-            )
-          ''');
-
-          // Seed default presets
-          for (final preset in Snippet.defaultPresets) {
-            await db.insert('snippets', preset.toMap());
+          await _createTables(db);
+          await _seedDefaultSnippets(db);
+          await _seedDefaultInstructions(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await _createInstructionTable(db);
+            await _seedDefaultInstructions(db);
           }
+        },
+        onOpen: (db) async {
+          await _createInstructionTable(db);
         },
       ),
     );
 
     return db;
   }
+
+  Future<void> _createTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE snippets (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        category TEXT NOT NULL,
+        code TEXT NOT NULL,
+        recommended_arch TEXT NOT NULL,
+        recommended_opt TEXT NOT NULL,
+        recommended_features TEXT NOT NULL,
+        is_preset INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE compilation_history (
+        id TEXT PRIMARY KEY,
+        snippet_title TEXT NOT NULL,
+        code TEXT NOT NULL,
+        arch TEXT NOT NULL,
+        opt_level TEXT NOT NULL,
+        applied_flags TEXT NOT NULL,
+        code_size INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await _createInstructionTable(db);
+  }
+
+  Future<void> _createInstructionTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS instruction_docs (
+        id TEXT PRIMARY KEY,
+        mnemonic TEXT NOT NULL,
+        operands TEXT,
+        arch TEXT NOT NULL,
+        isa_extension TEXT NOT NULL,
+        category TEXT NOT NULL,
+        opcode_encoding TEXT NOT NULL,
+        opcode_prefix TEXT,
+        summary TEXT NOT NULL,
+        description TEXT,
+        affected_flags TEXT,
+        vector_length TEXT,
+        source_db TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_arch ON instruction_docs(arch);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_mnemonic ON instruction_docs(mnemonic);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_isa ON instruction_docs(isa_extension);');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_instr_category ON instruction_docs(category);');
+  }
+
+  Future<void> _seedDefaultSnippets(Database db) async {
+    for (final preset in Snippet.defaultPresets) {
+      await db.insert('snippets', preset.toMap());
+    }
+  }
+
+  Future<void> _seedDefaultInstructions(Database db) async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/data/instructions_seed.json');
+      await _importInstructionsFromJsonInternal(db, jsonString, clearFirst: false);
+    } catch (_) {
+      // Fallback for tests or environments where asset bundle isn't available
+      final seedFile = File('assets/data/instructions_seed.json');
+      if (seedFile.existsSync()) {
+        final jsonString = seedFile.readAsStringSync();
+        await _importInstructionsFromJsonInternal(db, jsonString, clearFirst: false);
+      }
+    }
+  }
+
+  Future<int> _importInstructionsFromJsonInternal(Database db, String jsonContent, {bool clearFirst = false}) async {
+    final Map<String, dynamic> data = jsonDecode(jsonContent) as Map<String, dynamic>;
+    final List<dynamic> list = data['instructions'] as List<dynamic>? ?? [];
+
+    if (clearFirst) {
+      await db.delete('instruction_docs');
+    }
+
+    final batch = db.batch();
+    int count = 0;
+
+    for (final item in list) {
+      final doc = InstructionDoc.fromJson(item as Map<String, dynamic>);
+      final map = doc.toMap();
+      map['created_at'] = DateTime.now().toIso8601String();
+      batch.insert('instruction_docs', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      count++;
+    }
+
+    await batch.commit(noResult: true);
+    return count;
+  }
+
+  // --- Instruction Docs Database Operations ---
+
+  Future<List<InstructionDoc>> getInstructions({
+    String? query,
+    TargetArch? arch,
+    String? isaExtension,
+    String? category,
+  }) async {
+    final db = await database;
+    final whereClauses = <String>[];
+    final whereArgs = <dynamic>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      final q = '%${query.trim()}%';
+      whereClauses.add('(mnemonic LIKE ? OR opcode_encoding LIKE ? OR summary LIKE ? OR description LIKE ?)');
+      whereArgs.addAll([q, q, q, q]);
+    }
+
+    if (arch != null) {
+      whereClauses.add('arch = ?');
+      whereArgs.add(arch.id);
+    }
+
+    if (isaExtension != null && isaExtension != 'All') {
+      whereClauses.add('isa_extension = ?');
+      whereArgs.add(isaExtension);
+    }
+
+    if (category != null && category != 'All') {
+      whereClauses.add('category = ?');
+      whereArgs.add(category);
+    }
+
+    final String? where = whereClauses.isEmpty ? null : whereClauses.join(' AND ');
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'instruction_docs',
+      where: where,
+      whereArgs: whereArgs.isEmpty ? null : whereArgs,
+      orderBy: 'arch ASC, isa_extension ASC, mnemonic ASC',
+    );
+
+    return maps.map((m) => InstructionDoc.fromMap(m)).toList();
+  }
+
+  Future<List<String>> getAvailableIsaExtensions({TargetArch? arch}) async {
+    final db = await database;
+    String sql = 'SELECT DISTINCT isa_extension FROM instruction_docs';
+    List<dynamic> args = [];
+
+    if (arch != null) {
+      sql += ' WHERE arch = ?';
+      args.add(arch.id);
+    }
+    sql += ' ORDER BY isa_extension ASC';
+
+    final List<Map<String, dynamic>> result = await db.rawQuery(sql, args);
+    return result.map((r) => r['isa_extension'] as String).toList();
+  }
+
+  Future<List<String>> getAvailableInstructionCategories({TargetArch? arch}) async {
+    final db = await database;
+    String sql = 'SELECT DISTINCT category FROM instruction_docs';
+    List<dynamic> args = [];
+
+    if (arch != null) {
+      sql += ' WHERE arch = ?';
+      args.add(arch.id);
+    }
+    sql += ' ORDER BY category ASC';
+
+    final List<Map<String, dynamic>> result = await db.rawQuery(sql, args);
+    return result.map((r) => r['category'] as String).toList();
+  }
+
+  Future<int> importInstructionsFromJson(String jsonContent, {bool clearFirst = false}) async {
+    final db = await database;
+    return await _importInstructionsFromJsonInternal(db, jsonContent, clearFirst: clearFirst);
+  }
+
+  Future<String> exportInstructionsToJson() async {
+    final docs = await getInstructions();
+    final data = {
+      'version': '1.0',
+      'exported_at': DateTime.now().toIso8601String(),
+      'instructions': docs.map((d) => d.toMap()).toList(),
+    };
+    return const JsonEncoder.withIndent('  ').convert(data);
+  }
+
+  Future<InstructionDoc?> getInstructionById(String id) async {
+    final db = await database;
+    final maps = await db.query(
+      'instruction_docs',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return InstructionDoc.fromMap(maps.first);
+  }
+
+  // --- Snippets Database Operations ---
 
   Future<List<Snippet>> getAllSnippets() async {
     final db = await database;

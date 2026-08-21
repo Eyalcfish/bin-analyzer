@@ -1,0 +1,610 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../models/cpu_capability.dart';
+import '../models/instruction_doc.dart';
+import '../services/database_service.dart';
+import '../widgets/instruction_detail_dialog.dart';
+
+class DocsScreen extends StatefulWidget {
+  const DocsScreen({super.key});
+
+  @override
+  State<DocsScreen> createState() => _DocsScreenState();
+}
+
+class _DocsScreenState extends State<DocsScreen> {
+  final DatabaseService _dbService = DatabaseService.instance;
+  final TextEditingController _searchController = TextEditingController();
+
+  List<InstructionDoc> _instructions = [];
+  List<String> _isaExtensions = ['All'];
+  List<String> _categories = ['All'];
+
+  TargetArch? _selectedArch;
+  String _selectedIsa = 'All';
+  String _selectedCategory = 'All';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFiltersAndData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFiltersAndData() async {
+    setState(() => _isLoading = true);
+
+    final isas = await _dbService.getAvailableIsaExtensions(arch: _selectedArch);
+    final cats = await _dbService.getAvailableInstructionCategories(arch: _selectedArch);
+
+    _isaExtensions = ['All', ...isas];
+    _categories = ['All', ...cats];
+
+    if (!_isaExtensions.contains(_selectedIsa)) {
+      _selectedIsa = 'All';
+    }
+    if (!_categories.contains(_selectedCategory)) {
+      _selectedCategory = 'All';
+    }
+
+    await _fetchInstructions();
+  }
+
+  Future<void> _fetchInstructions() async {
+    setState(() => _isLoading = true);
+
+    final results = await _dbService.getInstructions(
+      query: _searchController.text.trim(),
+      arch: _selectedArch,
+      isaExtension: _selectedIsa,
+      category: _selectedCategory,
+    );
+
+    setState(() {
+      _instructions = results;
+      _isLoading = false;
+    });
+  }
+
+  void _showImportDialog() {
+    final jsonTextController = TextEditingController();
+    bool clearExisting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          title: const Row(
+            children: [
+              Icon(Icons.file_upload, color: Color(0xFF89B4FA)),
+              SizedBox(width: 8),
+              Text('Import Database JSON', style: TextStyle(color: Color(0xFFCDD6F4))),
+            ],
+          ),
+          content: SizedBox(
+            width: 550,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Paste or import a JSON database conforming to the Hardware Documentation schema. '
+                  'All instructions will be indexed into SQLite.',
+                  style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: jsonTextController,
+                  maxLines: 8,
+                  style: GoogleFonts.firaCode(fontSize: 12, color: const Color(0xFFCDD6F4)),
+                  decoration: const InputDecoration(
+                    hintText: '{\n  "version": "1.0",\n  "instructions": [\n    ...\n  ]\n}',
+                    hintStyle: TextStyle(color: Color(0xFF45475A)),
+                    filled: true,
+                    fillColor: Color(0xFF11111B),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: clearExisting,
+                      activeColor: const Color(0xFF89B4FA),
+                      onChanged: (val) {
+                        setModalState(() => clearExisting = val ?? false);
+                      },
+                    ),
+                    const Text(
+                      'Replace all existing instructions (clear database)',
+                      style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFFA6ADC8))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF89B4FA),
+                foregroundColor: const Color(0xFF11111B),
+              ),
+              onPressed: () async {
+                final content = jsonTextController.text.trim();
+                if (content.isNotEmpty) {
+                  try {
+                    final importedCount = await _dbService.importInstructionsFromJson(
+                      content,
+                      clearFirst: clearExisting,
+                    );
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Successfully imported $importedCount instructions into SQLite!')),
+                    );
+                    _loadFiltersAndData();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(backgroundColor: const Color(0xFFF38BA8), content: Text('Import error: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Import & Index', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportDatabase() async {
+    final jsonString = await _dbService.exportInstructionsToJson();
+    Clipboard.setData(ClipboardData(text: jsonString));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Database JSON copied to clipboard!')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF11111B),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E1E2E),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFCDD6F4)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hardware ISA & Opcode Documentation',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFCDD6F4)),
+            ),
+            Text(
+              'Database-Driven Instruction & Encoding Reference',
+              style: TextStyle(fontSize: 11, color: Color(0xFFA6ADC8)),
+            ),
+          ],
+        ),
+        actions: [
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF89B4FA),
+              side: const BorderSide(color: Color(0xFF313244)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: const Icon(Icons.upload_file, size: 16),
+            label: const Text('Import Database JSON', style: TextStyle(fontSize: 12)),
+            onPressed: _showImportDialog,
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Export Database JSON',
+            icon: const Icon(Icons.download, color: Color(0xFFA6ADC8), size: 20),
+            onPressed: _exportDatabase,
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filter & Search Controls Header
+          _buildFilterHeader(),
+
+          // Main Instruction List
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF89B4FA)))
+                : _instructions.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _instructions.length,
+                        itemBuilder: (context, index) {
+                          final doc = _instructions[index];
+                          return _buildInstructionCard(doc);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF181825),
+        border: Border(bottom: BorderSide(color: Color(0xFF313244))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Search Bar & Stats
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Color(0xFFCDD6F4), fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Search by mnemonic, opcode encoding, or keyword (e.g. vaddps, EVEX, dotprod)...',
+                    hintStyle: const TextStyle(color: Color(0xFF585B70)),
+                    prefixIcon: const Icon(Icons.search, color: Color(0xFF89B4FA), size: 20),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Color(0xFFA6ADC8), size: 16),
+                            onPressed: () {
+                              _searchController.clear();
+                              _fetchInstructions();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: const Color(0xFF1E1E2E),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF313244)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Color(0xFF313244)),
+                    ),
+                  ),
+                  onChanged: (_) => _fetchInstructions(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E2E),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF313244)),
+                ),
+                child: Text(
+                  '${_instructions.length} matching',
+                  style: const TextStyle(color: Color(0xFFA6E3A1), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Architecture Selector Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Text('Architecture: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
+                _buildArchChip('All', null),
+                _buildArchChip('AMD64 / x86_64', TargetArch.amd64),
+                _buildArchChip('ARM64 / AArch64', TargetArch.arm64),
+                _buildArchChip('RISC-V', TargetArch.riscv64),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ISA Extension Chips
+          if (_isaExtensions.length > 1) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const Text('ISA Extension: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
+                  ..._isaExtensions.map((isa) => _buildIsaChip(isa)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          // Category Chips
+          if (_categories.length > 1) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const Text('Category: ', style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 12)),
+                  ..._categories.map((cat) => _buildCategoryChip(cat)),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildArchChip(String label, TargetArch? arch) {
+    final isSelected = _selectedArch == arch;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: FilterChip(
+        selected: isSelected,
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? const Color(0xFF11111B) : const Color(0xFFCDD6F4),
+          ),
+        ),
+        backgroundColor: const Color(0xFF1E1E2E),
+        selectedColor: const Color(0xFF89B4FA),
+        checkmarkColor: const Color(0xFF11111B),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        onSelected: (_) {
+          setState(() {
+            _selectedArch = arch;
+          });
+          _loadFiltersAndData();
+        },
+      ),
+    );
+  }
+
+  Widget _buildIsaChip(String isa) {
+    final isSelected = _selectedIsa == isa;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: FilterChip(
+        selected: isSelected,
+        label: Text(
+          isa,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? const Color(0xFF11111B) : const Color(0xFFCDD6F4),
+          ),
+        ),
+        backgroundColor: const Color(0xFF1E1E2E),
+        selectedColor: const Color(0xFFF38BA8),
+        checkmarkColor: const Color(0xFF11111B),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        onSelected: (_) {
+          setState(() => _selectedIsa = isa);
+          _fetchInstructions();
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String cat) {
+    final isSelected = _selectedCategory == cat;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: FilterChip(
+        selected: isSelected,
+        label: Text(
+          cat,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? const Color(0xFF11111B) : const Color(0xFFCDD6F4),
+          ),
+        ),
+        backgroundColor: const Color(0xFF1E1E2E),
+        selectedColor: const Color(0xFFCBA6F7),
+        checkmarkColor: const Color(0xFF11111B),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        onSelected: (_) {
+          setState(() => _selectedCategory = cat);
+          _fetchInstructions();
+        },
+      ),
+    );
+  }
+
+  Widget _buildInstructionCard(InstructionDoc doc) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: const Color(0xFF1E1E2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: Color(0xFF313244)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => InstructionDetailDialog(
+                doc: doc,
+                onFilterByIsa: () {
+                  setState(() {
+                    _selectedArch = doc.arch;
+                    _selectedIsa = doc.isaExtension;
+                  });
+                  _loadFiltersAndData();
+                },
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Mnemonic badge
+                Container(
+                  width: 110,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF11111B),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF89B4FA).withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doc.mnemonic,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: Color(0xFF89B4FA),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        doc.arch.id.toUpperCase(),
+                        style: const TextStyle(color: Color(0xFF585B70), fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Main Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${doc.mnemonic} ${doc.operands}',
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                color: Color(0xFFCDD6F4),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF11111B),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              doc.opcodeEncoding,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                color: Color(0xFFA6E3A1),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        doc.summary,
+                        style: const TextStyle(color: Color(0xFFA6ADC8), fontSize: 12),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          _buildTag(doc.isaExtension, const Color(0xFFF38BA8)),
+                          _buildTag(doc.category, const Color(0xFFCBA6F7)),
+                          if (doc.vectorLength.isNotEmpty)
+                            _buildTag(doc.vectorLength, const Color(0xFFA6E3A1)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: Color(0xFF585B70), size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.menu_book, color: Color(0xFF45475A), size: 48),
+          const SizedBox(height: 12),
+          const Text(
+            'No instructions match your search or filter criteria.',
+            style: TextStyle(color: Color(0xFFA6ADC8), fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reset Filters'),
+            onPressed: () {
+              setState(() {
+                _searchController.clear();
+                _selectedArch = null;
+                _selectedIsa = 'All';
+                _selectedCategory = 'All';
+              });
+              _loadFiltersAndData();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
